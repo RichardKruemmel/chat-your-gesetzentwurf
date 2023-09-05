@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:latest
-    container_name: example-database
+    container_name: database
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -27,6 +27,16 @@ services:
       - "5050:80"
     networks:
       - pg-network
+
+  fastapi-backend:
+    build: ./backend
+    container_name: fastapi-backend
+    ports:
+      - "8000:8000"
+    networks:
+      - pg-network
+    depends_on:
+      - postgres
 
 networks:
   pg-network:
