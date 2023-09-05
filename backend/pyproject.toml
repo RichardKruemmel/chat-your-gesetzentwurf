@@ -17,6 +17,7 @@ psycopg2 = "^2.9.7"
 passlib = "^1.7.4"
 python-multipart = "^0.0.6"
 sqlalchemy = "^2.0.20"
+pdfplumber = "^0.10.2"
 
 
 [build-system]
