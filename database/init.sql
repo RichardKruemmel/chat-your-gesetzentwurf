@@ -16,5 +16,14 @@ DO $$ BEGIN
       text_embedding TEXT NOT NULL
     );
   END IF;
+
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_tables WHERE tablename='users') THEN
+    CREATE TABLE users (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(255) UNIQUE NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      hashed_password VARCHAR(255) NOT NULL
+    );
+  END IF;
 END $$;
 
