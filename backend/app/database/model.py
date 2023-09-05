@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Date, ForeignKey, LargeBinary, T
 from sqlalchemy.orm import relationship
 from .database import Base
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -9,6 +10,7 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+
 
 class Document(Base):
     __tablename__ = "documents"

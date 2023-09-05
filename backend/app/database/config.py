@@ -16,11 +16,13 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
-    POSTGRES_USER: str = Field("example-database", env='POSTGRES_USER')
-    POSTGRES_PASSWORD: str = Field("example-database-password", env='POSTGRES_PASSWORD')
-    POSTGRES_SERVER: str = Field("postgres", env='POSTGRES_SERVER')  # this should match the service name in docker-compose
-    POSTGRES_PORT: str = Field("5432", env='POSTGRES_PORT')  # standard Postgres port
-    POSTGRES_DB: str = Field("example-database", env='POSTGRES_DB')
+    POSTGRES_USER: str = Field("example-database", env="POSTGRES_USER")
+    POSTGRES_PASSWORD: str = Field("example-database-password", env="POSTGRES_PASSWORD")
+    POSTGRES_SERVER: str = Field(
+        "postgres", env="POSTGRES_SERVER"
+    )  # this should match the service name in docker-compose
+    POSTGRES_PORT: str = Field("5432", env="POSTGRES_PORT")  # standard Postgres port
+    POSTGRES_DB: str = Field("example-database", env="POSTGRES_DB")
 
     def DATABASE_URL(self):
         return str(

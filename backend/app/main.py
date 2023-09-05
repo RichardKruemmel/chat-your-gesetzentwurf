@@ -11,7 +11,7 @@ from jose import jwt, JWTError
 import langchain
 from pydantic import BaseModel
 
-#from app.core.chat import get_response
+# from app.core.chat import get_response
 from app.database.database import Session
 from app.database.crud import get_user
 from app.database.schema import ChatRequest, Token, User
@@ -145,6 +145,7 @@ async def read_chat(request: ChatRequest):
         raise HTTPException(
             status_code=500, detail=f"An unexpected error occurred: {str(e)}"
         )
+
 
 """ 
 @app.post("/uploadfile")
