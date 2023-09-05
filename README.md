@@ -36,9 +36,32 @@ To start all services, run:
 docker-compose up
 ```
 
+### Running backend Separately
+
+If you wish to run the backend service by itself without using Docker, you can do so using [poetry]https://python-poetry.org/) for dependency management and [uvicorn](https://www.uvicorn.org/) for server implementation.
+
+One-time Setup
+
+- Install Python 3.9 or higher
+- Install poetry
+
+Every time you run the backend
+
+```bash
+  # Create a virtual environment
+  $ poetry shell
+  # Install all packages
+  $ poetry install
+  # Start API server on port 8000
+  $ poetry run uvicorn app.main:app --reload
+```
+
+Note on Database Connection
+When running the backend separately, be aware that it will not automatically connect to the PostgreSQL database running in the Docker container. You'll need to modify your application's database configuration to point to the appropriate database instance.
+
 ### Access to pgAdmin Dashboard
 
-Once the services are up and running, open your web browser and navigate to http://localhost:5050. Log in using the email and password you specified in the .env file.
+Once the services are up and running, open your web browser and navigate to <http://localhost:5050>. Log in using the email and password you specified in the .env file.
 
 ### Connect to PostgreSQL Server
 
