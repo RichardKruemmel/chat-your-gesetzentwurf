@@ -11,10 +11,10 @@ from jose import jwt, JWTError
 import langchain
 from pydantic import BaseModel
 
-f#rom app.core.chat import get_response
-#from app.database.database import Session
-#from app.database.get_user import get_user
-#from app.database.schemas import ChatRequest, Token, User
+#from app.core.chat import get_response
+from app.database.database import Session
+from app.database.crud import get_user
+from app.database.schema import ChatRequest, Token, User
 from app.security import create_access_token
 from app.utils.bearer import OAuth2PasswordBearerWithCookie
 from app.utils.hashing import Hasher
@@ -109,7 +109,7 @@ def get_current_user_from_token(
 
 
 @app.get("/")
-async def read_root(name: Optional[str] = "we are neoFacturing!"):
+async def read_root(name: Optional[str] = ", chat with your Gesetzentwurf!"):
     return {"Hello": name}
 
 
@@ -128,7 +128,8 @@ async def read_chat(request: ChatRequest):
         content = request.messages[-1].content
         input_file = request.files[0] if request.files else None
 
-        response = get_response(content, ai="qa-chain", input_file=input_file)
+        response = None
+        # get_response(content, ai="qa-chain", input_file=input_file)
 
         if response is not None:
             return response
@@ -145,7 +146,7 @@ async def read_chat(request: ChatRequest):
             status_code=500, detail=f"An unexpected error occurred: {str(e)}"
         )
 
-
+""" 
 @app.post("/uploadfile")
 async def create_upload_file(
     # current_user: User = Depends(get_current_user_from_token),
@@ -160,4 +161,4 @@ async def create_upload_file(
     except Exception as e:
         print("Error uploading file")
         print(e)
-        raise HTTPException(status_code=500, detail="Failed to upload file")
+        raise HTTPException(status_code=500, detail="Failed to upload file") """
