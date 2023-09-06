@@ -36,14 +36,16 @@ To start all services, run:
 docker-compose up
 ```
 
-### Running backend Separately
+### Running the Backend Independently (Optional)
 
-If you wish to run the backend service by itself without using Docker, you can do so using [poetry]https://python-poetry.org/) for dependency management and [uvicorn](https://www.uvicorn.org/) for server implementation.
+*Note*: Running the backend by itself won't establish a connection with the database. Make sure to run the database service separately or together with the backend for full functionality.
+
+We are using [poetry]https://python-poetry.org/) for dependency management and [uvicorn](https://www.uvicorn.org/) for server implementation. Follow these commands:
 
 One-time Setup
 
 - Install Python 3.9 or higher
-- Install poetry
+- Install [poetry](https://python-poetry.org/docs/#installing-with-the-official-installer)
 
 Every time you run the backend
 
@@ -56,8 +58,18 @@ Every time you run the backend
   $ poetry run uvicorn app.main:app --reload
 ```
 
-Note on Database Connection
-When running the backend separately, be aware that it will not automatically connect to the PostgreSQL database running in the Docker container. You'll need to modify your application's database configuration to point to the appropriate database instance.
+### Running the Frontend Service Independently (Optional)
+
+Navigate to the frontend directory and install the dependencies:
+
+```bash
+cd frontend
+npm install
+```
+
+```bash
+npm run dev
+```
 
 ### Access to pgAdmin Dashboard
 
@@ -88,6 +100,12 @@ The PostgreSQL database consists of two main tables:
 
 - documents: Stores the PDF document data.
 - embeddings: Stores the text embeddings associated with each document.
+
+### License
+
+This project is under the GNU General Public License. See LICENSE for more details.
+
+The frontend template is based on the Horizon ChatGPT AI Template, which is open-source under the MIT license. Credits to [Horizon UI](https://horizon-ui.com/pro) for their work.
 
 ### Future Development
 
