@@ -4,11 +4,21 @@ from datetime import timedelta
 import os
 from typing import List, Optional, Annotated
 
-from fastapi import FastAPI, Depends, HTTPException, File, status, Response, UploadFile
+from fastapi import (
+    FastAPI,
+    Depends,
+    HTTPException,
+    status,
+    Response,
+    BackgroundTasks,
+    Query,
+    Path,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 import langchain
+from langchain.schema import HumanMessage
 from pydantic import BaseModel
 
 # from app.core.chat import get_response
@@ -18,6 +28,8 @@ from app.database.schema import ChatRequest, Token, User
 from app.security import create_access_token
 from app.utils.bearer import OAuth2PasswordBearerWithCookie
 from app.utils.hashing import Hasher
+from app.utils.get_response import get_response
+from app.langchain.llm import chatgpt
 
 
 def get_application():
@@ -123,43 +135,32 @@ async def read_users_me(current_user: User = Depends(get_current_user_from_token
     summary="Chat with the AI",
     description="Get a response from the AI model based on the input text",
 )
-async def read_chat(request: ChatRequest):
+async def read_chat(
+    question: str = Query(
+        ..., description="Input text to get a response from the AI model"
+    ),
+    # history: Annotated[str, Path(title="Chat history")] = "",
+):
     try:
-        content = request.messages[-1].content
-        input_file = request.files[0] if request.files else None
-
-        response = None
-        # get_response(content, ai="qa-chain", input_file=input_file)
-
+        # response = get_response(question, history)
+        response = chatgpt(
+            [
+                HumanMessage(
+                    content=question,
+                )
+            ]
+        )
         if response is not None:
-            return response
+            return response.content
         else:
             raise HTTPException(
                 status_code=500, detail="Failed to get a response from the AI model"
             )
-    except IndexError:
-        raise HTTPException(
-            status_code=400, detail="No messages provided in the request"
-        )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"An unexpected error occurred: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-""" 
-@app.post("/uploadfile")
-async def create_upload_file(
-    # current_user: User = Depends(get_current_user_from_token),
-    file: UploadFile = File(...),
-):
-    if not (file.filename.lower().endswith((".pdf", ".txt"))):
-        raise HTTPException(
-            status_code=500, detail="Wrong file type. You need a PDF or text file"
-        )
-    try:
-        
-    except Exception as e:
-        print("Error uploading file")
-        print(e)
-        raise HTTPException(status_code=500, detail="Failed to upload file") """
+@app.post("/upload-data")
+async def trigger_data_upload(background_tasks: BackgroundTasks):
+    background_tasks.add_task()
+    return {"message": "Data upload triggered"}
