@@ -1,5 +1,6 @@
 DO $$ BEGIN
   CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+  CREATE EXTENSION IF NOT EXISTS "vector";
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_tables WHERE tablename='documents') THEN
     CREATE TABLE documents (
       id SERIAL PRIMARY KEY,
