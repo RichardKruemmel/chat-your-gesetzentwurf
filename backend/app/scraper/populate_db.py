@@ -98,3 +98,10 @@ def populate_election_programs() -> None:
     ]
     insert_and_update(ElectionProgram, election_programs)
 
+
+if __name__ == "__main__":
+    Base.metadata.create_all(engine)
+    populate_parties()
+    populate_parliaments()
+    populate_elections()
+    populate_election_programs()
