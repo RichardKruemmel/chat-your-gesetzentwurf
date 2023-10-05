@@ -84,3 +84,17 @@ def update_parliament_last_election_id() -> None:
         session.close()
 
 
+def populate_election_programs() -> None:
+    api_election_programs = fetch_entity("election-program")
+    election_programs = [
+        {
+            "id": api_election_program["id"],
+            "label": api_election_program["label"],
+            "election_id": api_election_program["parliament_period"]["id"],
+            "party_id": api_election_program["party"]["id"],
+            "abgeordnetenwatch_file_url": api_election_program["file"],
+        }
+        for api_election_program in api_election_programs
+    ]
+    insert_and_update(ElectionProgram, election_programs)
+
