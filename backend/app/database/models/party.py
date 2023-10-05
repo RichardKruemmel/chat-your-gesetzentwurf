@@ -1,12 +1,11 @@
-from sqlalchemy import Column, String, Integer
-
+from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 from ..database import Base
 
 
 class Party(Base):
     __tablename__ = "party"
 
-    id = Column(Integer, primary_key=True)
-    label = Column(String)
-    full_name = Column(String)
-    short_name = Column(String)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    label: Mapped[str]
+    full_name: Mapped[str]
+    short_name: Mapped[str]
