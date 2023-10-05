@@ -45,13 +45,11 @@ def populate_elections() -> None:
                 "election_date": api_election["election_date"],
                 "start_date_period": api_election["start_date_period"],
                 "end_date_period": api_election["end_date_period"],
-                "parliament_id": api_election["parliament"]["id"]
-                if api_election["parliament"]
-                else None,
+                "parliament_id": api_election["parliament"]["id"],
                 "previous_election": api_election["previous_period"]["id"]
                 if api_election["previous_period"]
                 else None,
             }
             elections.append(new_election_entry)
-
-    insert_and_update(Election, elections)
+    sorted_elections = sorted(elections, key=lambda p: p["id"])
+    insert_and_update(Election, sorted_elections)
