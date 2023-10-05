@@ -30,6 +30,10 @@ from app.utils.bearer import OAuth2PasswordBearerWithCookie
 from app.utils.hashing import Hasher
 from app.utils.get_response import get_response
 from app.langchain.llm import chatgpt
+from app.logging_config import configure_logging
+
+
+configure_logging()
 
 
 def get_application():
