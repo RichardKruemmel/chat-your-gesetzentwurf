@@ -12,6 +12,7 @@ from app.database.schema import User
 def get_user(db: Session, username: str):
     return db.query(User).filter(User.email == username).first()
 
+
 def insert_and_update(model: Type[Base], data: List[Dict]) -> None:
     session = Session()
     try:
