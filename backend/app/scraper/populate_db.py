@@ -1,7 +1,12 @@
+from sqlalchemy.orm import Session
+from logging import logging
+
 from backend.app.database.crud import insert_and_update
+from backend.app.database.database import Base, engine
 from backend.app.database.models.party import Party
 from backend.app.database.models.parliament import Parliament
 from backend.app.database.models.election import Election
+from backend.app.database.models.election_programm import ElectionProgram
 from backend.app.scraper.utils import fetch_entity
 
 
@@ -26,8 +31,7 @@ def populate_parliaments() -> None:
             "id": api_parliament["id"],
             "label": api_parliament["label"],
             "abgeordnetenwatch_url": api_parliament["abgeordnetenwatch_url"],
-            "label_external_long": api_parliament["label_external_long"],
-            "current_election": api_parliament["current_project"],
+            "label_long": api_parliament["label_external_long"],
         }
         for api_parliament in api_parliaments
     ]
@@ -53,3 +57,30 @@ def populate_elections() -> None:
             elections.append(new_election_entry)
     sorted_elections = sorted(elections, key=lambda p: p["id"])
     insert_and_update(Election, sorted_elections)
+    update_parliament_last_election_id()
+
+
+def update_parliament_last_election_id() -> None:
+    # TODO: THis needs refactoring or moving to crud.py
+    api_parliaments = fetch_entity("parliaments")
+    session = Session()
+    try:
+        for parliament_data in api_parliaments:
+            if parliament_data["last_election_id"]:
+                parliament = (
+                    session.query(Parliament)
+                    .filter(Parliament.id == parliament_data["id"])
+                    .one_or_none()
+                )
+                if parliament and parliament_data["current_project"]:
+                    parliament.last_election_id = parliament_data["current_project"][
+                        "id"
+                    ]
+        session.commit()
+    except Exception as e:
+        logging.error(f"Database error: {e}")
+        session.rollback()
+    finally:
+        session.close()
+
+
