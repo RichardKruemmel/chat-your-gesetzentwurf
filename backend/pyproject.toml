@@ -21,6 +21,10 @@ pdfplumber = "^0.10.2"
 pgvector = "^0.2.1"
 openai = "^0.28.0"
 tiktoken = "^0.4.0"
+logging = "^0.4.9.6"
+alembic = "^1.12.0"
+scrapy = "^2.11.0"
+boto3 = "^1.28.62"
 
 
 [build-system]
