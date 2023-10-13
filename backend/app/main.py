@@ -1,8 +1,8 @@
 import os
-import secrets
 from datetime import timedelta
 import os
-from typing import List, Optional, Annotated
+from typing import Optional
+
 
 from fastapi import (
     FastAPI,
@@ -11,21 +11,19 @@ from fastapi import (
     status,
     Response,
     BackgroundTasks,
-    Query,
-    Path,
+    Query
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 import langchain
 from langchain.schema import HumanMessage
-from pydantic import BaseModel
 
 # from app.core.chat import get_response
-from app.database.database import engine
-from app.database.database import Session
 from app.database.crud import get_user
-from app.database.schema import ChatRequest, Token, User
+from app.database.database import Session, engine
+from app.database.utils.db_utils import get_session
+from app.database.schema import Token, User
 from app.security import create_access_token
 from app.utils.bearer import OAuth2PasswordBearerWithCookie
 from app.utils.hashing import Hasher
@@ -54,19 +52,11 @@ def get_application():
 app = get_application()
 
 
-def get_db():
-    db = Session()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 if os.environ.get("ENV") == "local":
     langchain.debug = True
 
 
-def authenticate_user(username: str, password: str, db: Session):
+def authenticate_user(username: str, password: str, db: Session = Depends(get_session)):
     user = get_user(username=username, db=db)
     if not user:
         return False
@@ -79,7 +69,7 @@ def authenticate_user(username: str, password: str, db: Session):
 def login_for_access_token(
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_session),
 ):
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
@@ -103,7 +93,7 @@ oauth2_scheme = OAuth2PasswordBearerWithCookie(tokenUrl="/login/token")
 
 
 def get_current_user_from_token(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_session)
 ):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
