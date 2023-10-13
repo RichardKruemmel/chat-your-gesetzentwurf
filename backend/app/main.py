@@ -22,6 +22,7 @@ from langchain.schema import HumanMessage
 from pydantic import BaseModel
 
 # from app.core.chat import get_response
+from app.database.database import engine
 from app.database.database import Session
 from app.database.crud import get_user
 from app.database.schema import ChatRequest, Token, User
@@ -168,3 +169,19 @@ async def read_chat(
 async def trigger_data_upload(background_tasks: BackgroundTasks):
     background_tasks.add_task()
     return {"message": "Data upload triggered"}
+
+
+@app.get("/check-db-connection")
+async def check_db_connection():
+    try:
+        with engine.connect():
+            pass  # Connection was successful
+        return {
+            "status": "success",
+            "message": "Connected to the database successfully.",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to connect to the database: {e}",
+        )
