@@ -1,13 +1,12 @@
-from sqlalchemy.orm import Session
-from logging import logging
+import logging
 
-from backend.app.database.crud import insert_and_update
-from backend.app.database.database import Base, engine
-from backend.app.database.models.party import Party
-from backend.app.database.models.parliament import Parliament
-from backend.app.database.models.election import Election
-from backend.app.database.models.election_programm import ElectionProgram
-from backend.app.scraper.utils import fetch_entity
+from app.database.crud import insert_and_update
+from app.database.database import Base, Session, engine
+from app.database.models.party import Party
+from app.database.models.parliament import Parliament
+from app.database.models.election import Election
+from app.database.models.election_programm import ElectionProgram
+from backend.app.scraper.utils.api_utils import fetch_entity
 
 
 def populate_parties() -> None:
@@ -50,13 +49,11 @@ def populate_elections() -> None:
                 "start_date_period": api_election["start_date_period"],
                 "end_date_period": api_election["end_date_period"],
                 "parliament_id": api_election["parliament"]["id"],
-                "previous_election": api_election["previous_period"]["id"]
-                if api_election["previous_period"]
-                else None,
             }
             elections.append(new_election_entry)
     sorted_elections = sorted(elections, key=lambda p: p["id"])
     insert_and_update(Election, sorted_elections)
+    update_election_previous_election_id(api_elections)
     update_parliament_last_election_id()
 
 
@@ -65,23 +62,57 @@ def update_parliament_last_election_id() -> None:
     api_parliaments = fetch_entity("parliaments")
     session = Session()
     try:
-        for parliament_data in api_parliaments:
-            if parliament_data["last_election_id"]:
-                parliament = (
+        for parliament_api_data in api_parliaments:
+            if parliament_api_data["current_project"]:
+                parliament_db_data = (
                     session.query(Parliament)
-                    .filter(Parliament.id == parliament_data["id"])
+                    .filter(Parliament.id == parliament_api_data["id"])
                     .one_or_none()
                 )
-                if parliament and parliament_data["current_project"]:
-                    parliament.last_election_id = parliament_data["current_project"][
-                        "id"
-                    ]
+                if parliament_db_data and parliament_api_data["current_project"]:
+                    parliament_db_data.last_election_id = parliament_api_data[
+                        "current_project"
+                    ]["id"]
         session.commit()
     except Exception as e:
         logging.error(f"Database error: {e}")
         session.rollback()
     finally:
         session.close()
+
+
+def update_election_previous_election_id(api_elections) -> None:
+    updated_elections = []
+    for api_election in api_elections:
+        if api_election["type"] == "election":
+            previous_election_id = None
+            if api_election["previous_period"]:
+                previous_legislature_period_id = api_election["previous_period"]["id"]
+                print(previous_legislature_period_id)
+                previous_election = next(
+                    (
+                        election
+                        for election in api_elections
+                        if election["id"] == previous_legislature_period_id
+                    ),
+                    None,
+                )
+                print(previous_election)
+                if previous_election["previous_period"]:
+                    previous_election_id = previous_election["previous_period"]["id"]
+                    print(previous_election_id)
+            # TODO implement solution for the case that abgeordnetenwatch did not link to the previous election id
+            new_election_entry = {
+                "id": api_election["id"],
+                "label": api_election["label"],
+                "election_date": api_election["election_date"],
+                "start_date_period": api_election["start_date_period"],
+                "end_date_period": api_election["end_date_period"],
+                "parliament_id": api_election["parliament"]["id"],
+                "previous_election_id": previous_election_id,
+            }
+            updated_elections.append(new_election_entry)
+    insert_and_update(Election, updated_elections)
 
 
 def populate_election_programs() -> None:
@@ -95,12 +126,14 @@ def populate_election_programs() -> None:
             "abgeordnetenwatch_file_url": api_election_program["file"],
         }
         for api_election_program in api_election_programs
+        if api_election_program["party"] is not None
+        and api_election_program["file"] is not None
     ]
     insert_and_update(ElectionProgram, election_programs)
 
 
 if __name__ == "__main__":
-    Base.metadata.create_all(engine)
+    Base.metadata.create_all(bind=engine)
     populate_parties()
     populate_parliaments()
     populate_elections()
