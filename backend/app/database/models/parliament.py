@@ -1,3 +1,4 @@
+from app.database.models.election import Election
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -11,6 +12,14 @@ class Parliament(Base):
     label: Mapped[str] = mapped_column(String, nullable=False)
     abgeordnetenwatch_url: Mapped[str] = mapped_column(String, nullable=False)
     label_long: Mapped[str] = mapped_column(String, nullable=False)
-    last_election_id: Mapped[int] = mapped_column(Integer, ForeignKey("election.id"))
+    last_election_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("election.id", use_alter=True)
+    )
 
-    election = relationship("Election", back_populates="parliament")
+    elections = relationship(
+        "Election",
+        back_populates="parliament",
+        post_update=True,
+        foreign_keys=[Election.parliament_id],
+    )
+    last_election = relationship("Election", foreign_keys=[last_election_id])
