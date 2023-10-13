@@ -4,9 +4,7 @@ import requests
 import time
 import math
 
-ENTITY_LIST = ["parties", "election-program", "parliaments", "parliament-periods"]
-PAGE_SIZE = 1000
-BASE_URL = "https://www.abgeordnetenwatch.de/api/v2"
+from app.scraper.utils.constants import BASE_URL, ENTITY_LIST, PAGE_SIZE
 
 
 class ApiResponse(TypedDict):
