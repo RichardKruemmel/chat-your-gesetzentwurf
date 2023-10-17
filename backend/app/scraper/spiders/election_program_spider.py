@@ -5,6 +5,7 @@ from app.scraper.utils.s3_uploader import S3Uploader
 import app.database.models as models
 from app.database.utils.db_utils import load_entity_from_db
 
+
 class ElectionProgramSpider(scrapy.Spider):
     name = "electionprogramspider"
 

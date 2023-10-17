@@ -11,7 +11,7 @@ from fastapi import (
     status,
     Response,
     BackgroundTasks,
-    Query
+    Query,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm

@@ -16,5 +16,6 @@ def scrape_election_programs():
     process.crawl(ElectionProgramSpider)
     process.start()
 
+
 if __name__ == "__main__":
     scrape_election_programs()

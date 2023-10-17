@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 class DatabaseSettings(BaseSettings):
     cors_origins: List[AnyHttpUrl] = []
 
@@ -29,12 +30,13 @@ class DatabaseSettings(BaseSettings):
     @property
     def database_url(self) -> URL:
         return URL.create(
-                drivername="postgresql",
-                username=self.postgres_user,
-                password=self.postgres_password,
-                host=self.postgres_server,
-                port=self.postgres_port,
-                database=self.postgres_db,
-            )
+            drivername="postgresql",
+            username=self.postgres_user,
+            password=self.postgres_password,
+            host=self.postgres_server,
+            port=self.postgres_port,
+            database=self.postgres_db,
+        )
+
 
 database_settings = DatabaseSettings()

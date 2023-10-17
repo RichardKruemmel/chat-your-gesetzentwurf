@@ -14,11 +14,12 @@ def get_session():
         finally:
             session.close()
 
+
 def load_entity_from_db(model: Type[T]) -> List[T]:
-   try:
+    try:
         with Session() as session:
             entity = session.scalars(select(model).order_by(model.id)).all()
         return entity
-   except Exception as e:
+    except Exception as e:
         logging.exception(f"An error occurred: {e}")
         raise
