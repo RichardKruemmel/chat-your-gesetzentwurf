@@ -68,3 +68,9 @@ def fetch_newest_entity_item(entity: str) -> List[Any]:
     return last_item["data"]
 
 
+def fetch_missing_entity_items(entity: str, last_id: int) -> List[Any]:
+    validate_entity(entity)
+    url = f"{BASE_URL}/{entity}?id[gt]={last_id}"
+    missing_items = fetch_json(url)
+    logging.info(f"Missing items for {entity} are fetched.")
+    return missing_items["data"]
