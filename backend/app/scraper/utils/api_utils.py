@@ -58,3 +58,13 @@ def fetch_entity(entity: str) -> List[Any]:
     time_end = time.time()
     logging.info(f"Total runtime of fetching {entity} is {time_end - time_begin}")
     return entity
+
+
+def fetch_newest_entity_item(entity: str) -> List[Any]:
+    validate_entity(entity)
+    url = f"{BASE_URL}/{entity}?range_end=1"
+    last_item = fetch_json(url)
+    logging.info(f"Newest item for {entity} is fetched.")
+    return last_item["data"]
+
+
