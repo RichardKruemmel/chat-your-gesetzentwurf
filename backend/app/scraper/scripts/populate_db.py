@@ -1,4 +1,5 @@
 import logging
+import os
 
 from app.database.crud import insert_and_update
 from app.database.database import Base, Session, engine
@@ -117,6 +118,7 @@ def update_election_previous_election_id(api_elections) -> None:
 
 def populate_election_programs() -> None:
     api_election_programs = fetch_entity("election-program")
+    s3_bucket_url = os.getenv["S3_BUCKET_URL"]
     election_programs = [
         {
             "id": api_election_program["id"],
@@ -124,6 +126,7 @@ def populate_election_programs() -> None:
             "election_id": api_election_program["parliament_period"]["id"],
             "party_id": api_election_program["party"]["id"],
             "abgeordnetenwatch_file_url": api_election_program["file"],
+            "file_cloud_url": f"{s3_bucket_url}/{api_election_program['parliament_period']['id']}/{api_election_program['id']}.pdf",
         }
         for api_election_program in api_election_programs
         if api_election_program["party"] is not None
