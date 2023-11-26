@@ -1,3 +1,4 @@
 *.env
 !sample.env
 *.pyc
+*.pdf
