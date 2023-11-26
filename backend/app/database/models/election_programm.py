@@ -17,13 +17,7 @@ class ElectionProgram(Base):
     )
     abgeordnetenwatch_file_url: Mapped[str] = mapped_column(String, nullable=False)
     file_cloud_url: Mapped[str] = mapped_column(String)
-    document_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("document.id", use_alter=True), index=True
-    )
+    vector_store_id: Mapped[int] = mapped_column(Integer)
 
     election = relationship("Election", back_populates="election_programs")
     party = relationship("Party", back_populates="election_programs")
-    """ document = relationship(
-        "Document", uselist=False, back_populates="election_program", post_update=True
-    )
- """
