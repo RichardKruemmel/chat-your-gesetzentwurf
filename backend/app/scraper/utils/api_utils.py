@@ -53,11 +53,11 @@ def fetch_entity(entity: str) -> List[Any]:
     validate_entity(entity)
     total_entity_count = get_total_entity_count(entity)
     page_count = math.ceil(total_entity_count / PAGE_SIZE)
-    entity = fetch_all_pages(entity, page_count)
+    fetched_entities = fetch_all_pages(entity, page_count)
     logging.info(f"All data for {entity} is fetched.")
     time_end = time.time()
     logging.info(f"Total runtime of fetching {entity} is {time_end - time_begin}")
-    return entity
+    return fetched_entities
 
 
 def fetch_newest_entity_item(entity: str) -> List[Any]:
