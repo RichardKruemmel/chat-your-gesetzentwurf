@@ -13,9 +13,7 @@ def setup_test_server():
 
         backend_dir = os.path.abspath(os.path.join(current_dir, "../../../"))
 
-        directory = os.path.join(
-            backend_dir, "tests/integrations/test_data/test_programs/"
-        )
+        directory = os.path.join(backend_dir, "tests/integrations/test_data/")
 
         return directory
 
@@ -30,11 +28,28 @@ def setup_test_server():
             http.server.SimpleHTTPRequestHandler.end_headers(self)
 
         def translate_path(self, path):
-            if path.startswith("/api/program/"):
+            path_parts = path.split("/")
+
+            if len(path_parts) > 1:
+                entity_with_query = path_parts[1]
+                entity_parts = entity_with_query.split("?")
+                entity = entity_parts[0]
+                print(entity)
+
+            # Check if the URL is for the newest item or for updates
+            if path.endswith("?range_end=1"):
+                file_path = os.path.join(DIRECTORY, f"{entity}_newest.json")
+                return file_path
+            elif "id%5Bgt%5D" in path:
+                file_path = os.path.join(DIRECTORY, f"{entity}_updates.json")
+                print(file_path)
+                return file_path
+
+            if path.startswith("/program/"):
                 program_path = path.split("/")[-1]
                 file_path = os.path.join(DIRECTORY, f"program_{program_path}.json")
                 return file_path
-            return http.server.SimpleHTTPRequestHandler.translate_path(self, path)
+            return super().translate_path(path)
 
         def do_GET(self):
             # Serving the JSON file content
