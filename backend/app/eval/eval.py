@@ -136,6 +136,10 @@ def run_ragas_evaluation():
     query_engine = index.as_query_engine()
     metrics = [
         faithfulness,
+        harmfulness,
+        answer_relevancy,
+        context_precision,
+        context_recall,
     ]
     langfuse = setup_langfuse()
     faithfulness.llm = eval_llm
