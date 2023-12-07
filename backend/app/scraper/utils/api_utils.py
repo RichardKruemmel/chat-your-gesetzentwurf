@@ -1,3 +1,4 @@
+import os
 from typing import Any, TypedDict, Dict, List
 import logging
 import requests
@@ -17,8 +18,14 @@ def validate_entity(entity: str):
         raise Exception(f"{entity} is not a valid entity")
 
 
+def get_base_url() -> str:
+    constant_base_url = BASE_URL
+    return os.environ.get("BASE_URL", constant_base_url)
+
+
 def get_total_entity_count(entity: str) -> int:
-    url = f"{BASE_URL}/{entity}?range_end=0"
+    base_url = get_base_url()
+    url = f"{base_url}/{entity}?range_end=0"
     result = fetch_json(url)
     return result["meta"]["result"]["total"]
 
@@ -34,7 +41,8 @@ def fetch_json(url: str) -> ApiResponse:
 
 
 def fetch_entities_by_page(entity: str, page_nr: int) -> List[Any]:
-    url = f"{BASE_URL}/{entity}?range_start={page_nr * PAGE_SIZE}&range_end={(page_nr + 1) * PAGE_SIZE - 1}"
+    base_url = get_base_url()
+    url = f"{base_url}/{entity}?range_start={page_nr * PAGE_SIZE}&range_end={(page_nr + 1) * PAGE_SIZE - 1}"
     result: ApiResponse = fetch_json(url)
     return result["data"]
 
@@ -62,7 +70,8 @@ def fetch_entity(entity: str) -> List[Any]:
 
 def fetch_newest_entity_item(entity: str) -> List[Any]:
     validate_entity(entity)
-    url = f"{BASE_URL}/{entity}?range_end=1"
+    base_url = get_base_url()
+    url = f"{base_url}/{entity}?range_end=1"
     last_item = fetch_json(url)
     logging.info(f"Newest item for {entity} is fetched.")
     return last_item["data"]
@@ -70,7 +79,8 @@ def fetch_newest_entity_item(entity: str) -> List[Any]:
 
 def fetch_missing_entity_items(entity: str, last_id: int) -> List[Any]:
     validate_entity(entity)
-    url = f"{BASE_URL}/{entity}?id[gt]={last_id}"
+    base_url = get_base_url()
+    url = f"{base_url}/{entity}?id[gt]={last_id}"
     missing_items = fetch_json(url)
     logging.info(f"Missing items for {entity} are fetched.")
     return missing_items["data"]
