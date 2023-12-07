@@ -26,9 +26,6 @@ from langfuse import Langfuse
 from langfuse.model import (
     CreateTrace,
     CreateSpan,
-    CreateGeneration,
-    CreateEvent,
-    CreateScore,
 )
 
 
@@ -92,7 +89,6 @@ def generate_ragas_qr_pairs(dataset_json_path):
 def setup_ragas_llm():
     load_dotenv()
     try:
-        api_base = get_env_variable("OPENAI_API_BASE")
         api_key = get_env_variable("OPENAI_API_KEY")
         api_version = get_env_variable("OPENAI_API_VERSION")
         deployment_name = get_env_variable("OPENAI_DEPLOYMENT_NAME")
