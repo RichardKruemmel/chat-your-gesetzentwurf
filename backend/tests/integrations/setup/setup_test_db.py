@@ -43,7 +43,7 @@ def setup_test_database():
             election_id=1,
             party_id=1,
             abgeordnetenwatch_file_url="http://localhost:8000/program/1",
-            file_cloud_url="https://s3.example.com/program1.pdf",
+            file_cloud_url="",
             vector_store_id=101,
         ),
         models.ElectionProgram(
@@ -52,7 +52,7 @@ def setup_test_database():
             election_id=1,
             party_id=2,
             abgeordnetenwatch_file_url="http://localhost:8000/program/2",
-            file_cloud_url="https://s3.example.com/program2.pdf",
+            file_cloud_url="",
             vector_store_id=102,
         ),
     ]
