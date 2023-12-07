@@ -19,7 +19,7 @@ def test_upload_to_s3_success(mock_logging_info, mock_client):
     mock_s3_client = mock_client.return_value
     mock_s3_client.put_object.return_value = None
 
-    s3_uploader = S3Uploader(ACCESS_KEY, SECRET_KEY)
+    s3_uploader = S3Uploader(ACCESS_KEY, SECRET_KEY, "election-program")
     s3_uploader.upload_to_s3(PROGRAM_ID, ELECTION_ID, FILE_DATA)
 
     mock_client.assert_called_once_with(
@@ -46,7 +46,7 @@ def test_upload_to_s3_client_error(mock_logging_error, mock_client):
         {"Error": {"Code": "TestException", "Message": "Test Exception"}}, "PutObject"
     )
 
-    s3_uploader = S3Uploader(ACCESS_KEY, SECRET_KEY)
+    s3_uploader = S3Uploader(ACCESS_KEY, SECRET_KEY, "election-program")
     s3_uploader.upload_to_s3(PROGRAM_ID, ELECTION_ID, FILE_DATA)
 
     mock_client.assert_called_once_with(
@@ -69,7 +69,7 @@ def test_upload_to_s3_no_credentials_error(mock_logging_error, mock_client):
     mock_s3_client = mock_client.return_value
     mock_s3_client.put_object.side_effect = NoCredentialsError()
 
-    s3_uploader = S3Uploader(ACCESS_KEY, SECRET_KEY)
+    s3_uploader = S3Uploader(ACCESS_KEY, SECRET_KEY, "election-program")
     s3_uploader.upload_to_s3(PROGRAM_ID, ELECTION_ID, FILE_DATA)
 
     mock_client.assert_called_once_with(
@@ -92,7 +92,7 @@ def test_upload_to_s3_generic_error(mock_logging_error, mock_client):
     mock_s3_client = mock_client.return_value
     mock_s3_client.put_object.side_effect = Exception("Generic error")
 
-    s3_uploader = S3Uploader(ACCESS_KEY, SECRET_KEY)
+    s3_uploader = S3Uploader(ACCESS_KEY, SECRET_KEY, "election-program")
     s3_uploader.upload_to_s3(PROGRAM_ID, ELECTION_ID, FILE_DATA)
 
     mock_client.assert_called_once_with(
