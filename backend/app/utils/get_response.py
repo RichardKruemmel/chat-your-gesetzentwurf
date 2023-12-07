@@ -1,5 +1,5 @@
 from langchain import LLMChain
-from app.langchain.llm import chain
+from app.langchain.llm import create_chain
 
 
 def get_response(input: str, history: str) -> str:
@@ -12,7 +12,7 @@ def get_response(input: str, history: str) -> str:
 
     Returns:
         str: AI model's response
-    """
+
     try:
         # OpenAI recommends replacing newlines with spaces for best results
         sanitizedInput = input.strip().replace("\n", " ")
@@ -20,6 +20,8 @@ def get_response(input: str, history: str) -> str:
         print(f"Error in sanitizing the input: {str(e)}")
         return None
     try:
+        vectorstore = create_vectorstore()
+        chain = create_chain(vectorstore)
         response = chain({"question": sanitizedInput, "chat_history": history})
         answer = response["answer"].strip().replace("\n", " ")
         source = response["sources"]
@@ -28,7 +30,8 @@ def get_response(input: str, history: str) -> str:
 
     except Exception as e:
         print(f"Error in running the chain: {str(e)}")
-        return None
+        return None"""
+    return "Hello"
 
 
 """     try:
