@@ -10,7 +10,7 @@ class ElectionProgram(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     label: Mapped[str] = mapped_column(String, nullable=False)
     election_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("election.id"), index=True, unique=True, nullable=False
+        Integer, ForeignKey("election.id"), index=True, nullable=False
     )
     party_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("party.id"), nullable=False
