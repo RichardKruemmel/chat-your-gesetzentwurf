@@ -3,9 +3,10 @@ import os
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 
-from app.scraper.scripts.update_db import update_db
+from app.scraper.scripts.update_db import update_db, update_file_cloud_url
 from app.scraper.spiders.election_program_spider import ElectionProgramSpider
 
+from tests.integrations.assertions.file_cloud_urls import assert_file_cloud_urls_updated
 from tests.integrations.assertions.database_updates import (
     assert_correct_database_updates,
 )
@@ -61,6 +62,12 @@ def test_integration():
     assert_correct_s3_upload(
         test_session, S3_TEST_ACCESS_KEY, S3_TEST_SECRET_KEY, S3_TEST_BUCKET
     )
+
+    # Update file cloud URLs in the database
+    update_file_cloud_url(S3_TEST_BUCKET, test_session)
+
+    # Assert file cloud URLs updated correctly
+    assert_file_cloud_urls_updated(test_session, S3_TEST_BUCKET)
 
     # Teardown S3 bucket
     teardown_s3(S3_TEST_BUCKET, S3_TEST_ACCESS_KEY, S3_TEST_SECRET_KEY, test_session)
