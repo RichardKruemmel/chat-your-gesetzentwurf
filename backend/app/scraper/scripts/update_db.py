@@ -1,16 +1,18 @@
 import logging
-
+from sqlalchemy.orm import Session
 
 from app.scraper.utils.constants import ENTITY_MODEL_MAPPING
 from app.scraper.utils.api_utils import fetch_newest_entity_item
 from app.database.database import Session
 from app.database.models.election_program import ElectionProgram
 from app.scraper.utils.compare_and_fetch_update import compare_and_fetch_update
+
 from app.database.crud import insert_and_update
 from app.database.utils.db_utils import get_last_id_from_model
+from app.database.models.election_programm import ElectionProgram
 
 
-def update_db() -> None:
+def update_db(session: Session) -> None:
     for entity, model in ENTITY_MODEL_MAPPING.items():
         newest_entity_item = fetch_newest_entity_item(entity)
         if not newest_entity_item:
@@ -22,13 +24,11 @@ def update_db() -> None:
 
         new_data = compare_and_fetch_update(entity, newest_api_id, last_db_id)
         if new_data:
-            insert_and_update(model, new_data)
+            insert_and_update(model, new_data, session)
             logging.info(f"Update in database for {entity} successful.")
 
 
-def update_file_cloud_url(s3_bucket_url: str):
-    db = Session()
-
+def update_file_cloud_url(s3_bucket_url: str, db: Session):
     try:
         election_programs = db.query(ElectionProgram).all()
 
