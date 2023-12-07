@@ -10,13 +10,11 @@ from fastapi import (
     HTTPException,
     status,
     Response,
-    BackgroundTasks,
     Query,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt, JWTError
-import langchain
 from langchain.schema import HumanMessage
 
 # from app.core.chat import get_response
@@ -27,9 +25,14 @@ from app.database.schema import Token, User
 from app.security import create_access_token
 from app.utils.bearer import OAuth2PasswordBearerWithCookie
 from app.utils.hashing import Hasher
-from app.utils.get_response import get_response
 from app.langchain.llm import chatgpt
 from app.logging_config import configure_logging
+from app.llama_index.vector_store import main
+from app.llama_index.ingestion import (
+    query_and_ingest_election_programs,
+)
+from app.llama_index.llm import verify_llm_connection
+from app.llama_index.index import setup_index
 
 
 configure_logging()
@@ -50,10 +53,6 @@ def get_application():
 
 
 app = get_application()
-
-
-if os.environ.get("ENV") == "local":
-    langchain.debug = True
 
 
 def authenticate_user(username: str, password: str, db: Session = Depends(get_session)):
@@ -155,12 +154,6 @@ async def read_chat(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/upload-data")
-async def trigger_data_upload(background_tasks: BackgroundTasks):
-    background_tasks.add_task()
-    return {"message": "Data upload triggered"}
-
-
 @app.get("/check-db-connection")
 async def check_db_connection():
     try:
@@ -174,4 +167,49 @@ async def check_db_connection():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to connect to the database: {e}",
+        )
+
+
+@app.get("/check-llm-connection")
+async def check_llm_connection():
+    try:
+        verify_llm_connection()
+        return {
+            "status": "success",
+            "message": "Connected to the LLM successfully.",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to connect to the LLM: {e}",
+        )
+
+
+@app.get("/check-index-connection")
+async def check_index_connection():
+    try:
+        setup_index()
+        return {
+            "status": "success",
+            "message": "Setup index successfully.",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to connect to the LLM: {e}",
+        )
+
+
+@app.get("/ingest-data")
+async def ingest_data():
+    try:
+        query_and_ingest_election_programs(128, 1)
+        return {
+            "status": "success",
+            "message": "Ingested data.",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to ingest data: {e}",
         )
