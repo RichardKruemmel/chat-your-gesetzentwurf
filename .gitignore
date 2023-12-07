@@ -2,3 +2,4 @@
 !sample.env
 *.pyc
 *.pdf
+!eval_doc.pdf
