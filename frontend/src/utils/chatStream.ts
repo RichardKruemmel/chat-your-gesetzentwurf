@@ -23,7 +23,6 @@ export const OpenAIStream = async (
   const prompt = createPrompt(inputCode);
 
   const system = { role: 'system', content: prompt };
-
   const res = await fetch(`https://api.openai.com/v1/chat/completions`, {
     headers: {
       'Content-Type': 'application/json',
@@ -86,9 +85,10 @@ export const OpenAIStream = async (
 
 export const getBackendResponse = async (question: string) => {
   try {
-    const res = await fetch(
-      'http://127.0.0.1:8000/chat?question=' + encodeURIComponent(question),
-    );
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL
+      ? process.env.NEXT_PUBLIC_BACKEND_URL
+      : 'localhost:2000';
+    const res = await fetch(`${BACKEND_URL}?=` + encodeURIComponent(question));
     if (res.status === 200) {
       const data = await res.json();
       return data.response;
