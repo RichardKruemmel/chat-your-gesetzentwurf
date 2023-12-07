@@ -28,10 +28,10 @@ def update_db(session: Session) -> None:
             logging.info(f"Update in database for {entity} successful.")
 
 
-def update_file_cloud_url(s3_bucket_url: str, db: Session):
+def update_file_cloud_url(s3_bucket_name: str, db: Session):
     try:
         election_programs = db.query(ElectionProgram).all()
-
+        s3_bucket_url = f"https://{s3_bucket_name}.s3.eu-central-1.amazonaws.com"
         for program in election_programs:
             new_url = f"{s3_bucket_url}/{program.election_id}/{program.id}.pdf"
             program.file_cloud_url = new_url
