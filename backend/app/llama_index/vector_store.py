@@ -17,7 +17,7 @@ def get_vector_store_credentials() -> str:
     try:
         load_dotenv()
         qdrant_api_key = os.environ["QDRANT_API_KEY"]
-        qdrant_url = os.environ["QDRANT_URL"]
+        qdrant_url = os.environ["QDRANT_API_URL"]
         return qdrant_api_key, qdrant_url
     except Exception as e:
         logging.error(f"An error occurred while reading the credentials: {e}")
