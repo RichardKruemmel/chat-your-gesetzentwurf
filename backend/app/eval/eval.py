@@ -1,14 +1,11 @@
+import logging
 import os
 from dotenv import load_dotenv
 from llama_index import PromptTemplate, SimpleDirectoryReader, VectorStoreIndex
+import pandas as pd
 
-from ragas.metrics import (
-    faithfulness,
-    answer_relevancy,
-    context_precision,
-    context_recall,
-)
-from ragas.metrics.critique import harmfulness
+from ragas.metrics import Faithfulness, AnswerRelevancy, ContextPrecision, ContextRecall
+from ragas.metrics import answer_relevancy
 from ragas.llama_index import evaluate
 from ragas.llms import LangchainLLM
 
@@ -16,7 +13,6 @@ from langchain.chat_models import AzureChatOpenAI
 from langchain.embeddings import AzureOpenAIEmbeddings
 
 
-from llama_index.node_parser import SentenceSplitter
 from llama_index.evaluation import (
     DatasetGenerator,
     QueryResponseDataset,
@@ -26,8 +22,6 @@ from langfuse import Langfuse
 from langfuse.model import (
     CreateTrace,
     CreateSpan,
-    CreateGeneration,
-    CreateEvent,
     CreateScore,
 )
 
@@ -48,15 +42,13 @@ EVAL_VECTOR_STORE_NAME = "election_programs_eval"
 SERVICE_CONTEXT_VERSION = "3.5"
 NUM_QUESTIONS_PER_CHUNK = 3
 NUM_EVAL_NODES = 100
-
-parser_dict = {
-    "sent_parser_s2_o50": SentenceSplitter(chunk_size=256, chunk_overlap=50),
-    "sent_parser_s2_o100": SentenceSplitter(chunk_size=256, chunk_overlap=100),
-    "sent_parser_s5_o100": SentenceSplitter(chunk_size=512, chunk_overlap=100),
-    "sent_parser_s5_o200": SentenceSplitter(chunk_size=512, chunk_overlap=200),
-    "sent_parser_s10_o200": SentenceSplitter(chunk_size=1024, chunk_overlap=200),
-    "sent_parser_s10_o500": SentenceSplitter(chunk_size=1024, chunk_overlap=500),
-}
+EVAL_METRICS = [
+    Faithfulness(),
+    ContextPrecision(),
+    ContextRecall(),
+    AnswerRelevancy(),
+]
+VERSION = "0.1.1"
 
 
 def generate_dataset():
@@ -92,7 +84,6 @@ def generate_ragas_qr_pairs(dataset_json_path):
 def setup_ragas_llm():
     load_dotenv()
     try:
-        api_base = get_env_variable("OPENAI_API_BASE")
         api_key = get_env_variable("OPENAI_API_KEY")
         api_version = get_env_variable("OPENAI_API_VERSION")
         deployment_name = get_env_variable("OPENAI_DEPLOYMENT_NAME")
@@ -111,6 +102,7 @@ def setup_ragas_llm():
 def setup_ragas_embeddings():
     load_dotenv()
     try:
+        deployment = get_env_variable("OPENAI_DEPLOYMENT_EMBEDDINGS")
         api_base = get_env_variable("OPENAI_API_BASE")
         api_key = get_env_variable("OPENAI_API_KEY")
         api_version = get_env_variable("OPENAI_API_VERSION")
@@ -118,7 +110,7 @@ def setup_ragas_embeddings():
         raise e
 
     azure_embeddings = AzureOpenAIEmbeddings(
-        deployment="wahlwave-embedding",
+        azure_deployment=deployment,
         model="text-embedding-ada-002",
         openai_api_type="azure",
         openai_api_base=api_base,
@@ -133,42 +125,23 @@ def run_ragas_evaluation():
     eval_llm = setup_ragas_llm()
     eval_embeddings = setup_ragas_embeddings()
     eval_vector_store = setup_vector_store(EVAL_VECTOR_STORE_NAME)
-    eval_service_context = setup_service_context(SERVICE_CONTEXT_VERSION)
+    eval_service_context = setup_service_context(SERVICE_CONTEXT_VERSION, azure=True)
     index = VectorStoreIndex.from_vector_store(
         vector_store=eval_vector_store, service_context=eval_service_context
     )
     query_engine = index.as_query_engine()
-    metrics = [
-        faithfulness,
-    ]
-    langfuse = setup_langfuse()
-    faithfulness.llm = eval_llm
-    faithfulness.embeddings = eval_embeddings
-    harmfulness.llm = eval_llm
-    harmfulness.embeddings = eval_embeddings
-    answer_relevancy.llm = eval_llm
-    context_precision.llm = eval_llm
-    context_precision.embeddings = eval_embeddings
-    context_recall.llm = eval_llm
-    context_recall.embeddings = eval_embeddings
+    metrics = EVAL_METRICS
 
-    query_engine.query = langfuse.trace(query_engine.retrieve())
-    scores = {}
+    answer_relevancy.embeddings = eval_embeddings
     for m in metrics:
-        print(f"calculating {m.name}")
-        scores[m.name] = m.score(query_engine, eval_questions, eval_answers)
+        m.__setattr__("llm", eval_llm)
+        m.__setattr__("embeddings", eval_embeddings)
 
-    trace = langfuse.trace(CreateTrace(name="rag"))
-    trace.span(
-        CreateSpan(
-            name="evaluation",
-            input={"questions": eval_questions, "answers": eval_answers},
-            output={"scores": scores},
-        )
-    )
     result = evaluate(query_engine, metrics, eval_questions, eval_answers)
-    print(result)
-    result.to_pandas()
+    df = result.to_pandas()
+    df.to_csv("app/eval/eval_data/ragas_eval.csv", index=False)
+    eval = pd.read_csv("app/eval/eval_data/ragas_eval.csv", sep=",")
+    return eval
 
 
 def setup_langfuse():
@@ -178,25 +151,55 @@ def setup_langfuse():
         public_key = get_env_variable("LANGFUSE_PUBLIC_KEY")
     except EnvironmentError as e:
         raise e
-
     langfuse = Langfuse(public_key=public_key, secret_key=secret_key)
+    logging.info("Langfuse successfully set up.")
     return langfuse
 
 
-def create_languse_dataset():
-    fiqa_eval = generate_ragas_qr_pairs(DATASET_JSON_PATH)
+def create_langfuse_traces(fiqa_eval=None, version="0.1.0"):
+    if fiqa_eval is None:
+        # Load csv file
+        fiqa_eval = pd.read_csv("app/eval/eval_data/ragas_eval.csv", sep=",")
     langfuse = setup_langfuse()
-    for question, answer in fiqa_eval[:5]:
-        trace = langfuse.trace(CreateTrace(name="rag"))
-
+    for index, row in fiqa_eval.iterrows():
+        trace = langfuse.trace(CreateTrace(name="wahlwave", version=version))
+        trace.span(
+            CreateSpan(
+                name="retrieval",
+                input={"question": row["question"]},
+                output={"contexts": row["contexts"]},
+            )
+        )
         trace.span(
             CreateSpan(
                 name="generation",
-                input={"question": question},
-                output={"answer": answer},
+                input={"question": row["question"]},
+                output={"answer": row["answer"]},
             )
         )
+        for metric in EVAL_METRICS:
+            trace.score(CreateScore(name=metric.name, value=row[metric.name]))
+
+    langfuse.flush()
 
 
-if __name__ == "__main__":
-    run_ragas_evaluation()
+def get_traces(name=None, limit=None, user_id=None):
+    all_data = []
+    page = 1
+    langfuse = setup_langfuse()
+    while True:
+        response = langfuse.client.trace.list(name=name, page=page, user_id=user_id)
+        if not response.data:
+            break
+        page += 1
+        all_data.extend(response.data)
+        if len(all_data) > limit:
+            break
+    print(all_data[:limit])
+    return all_data[:limit]
+
+
+def generate_evals():
+    generate_dataset()
+    eval = run_ragas_evaluation()
+    create_langfuse_traces(eval, version=VERSION)
