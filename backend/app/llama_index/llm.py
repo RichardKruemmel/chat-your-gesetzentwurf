@@ -58,17 +58,20 @@ def verify_llm_connection():
 
 
 def setup_service_context(model_version="3.5", azure=True):
-    if model_version == "3.5" and azure:
-        llm = llm_35
-        embed_model = ada_2
-    elif model_version == "4" and azure:
-        llm = llm_40
-        embed_model = ada_2
-    elif not azure:
-        llm = gpt_35
-        embed_model = ada_2_gpt
-    else:
-        raise ValueError("Invalid model version specified")
+    try:
+        if model_version == "3.5" and azure:
+            llm = llm_35
+            embed_model = ada_2
+        elif model_version == "4" and azure:
+            llm = llm_40
+            embed_model = ada_2
+        elif not azure:
+            llm = gpt_35
+            embed_model = ada_2_gpt
+        else:
+            raise ValueError("Invalid model version specified")
 
-    service_context = ServiceContext.from_defaults(llm=llm, embed_model=embed_model)
-    return service_context
+        service_context = ServiceContext.from_defaults(llm=llm, embed_model=embed_model)
+        return service_context
+    except Exception as e:
+        raise ValueError(f"Failed to set up service context: {e}")
