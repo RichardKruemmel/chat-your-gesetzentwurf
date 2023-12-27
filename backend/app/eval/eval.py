@@ -1,10 +1,8 @@
 import logging
-import os
 from dotenv import load_dotenv
-from llama_index import PromptTemplate, SimpleDirectoryReader, VectorStoreIndex
+from llama_index import VectorStoreIndex
 import pandas as pd
 
-from ragas.metrics import Faithfulness, AnswerRelevancy, ContextPrecision, ContextRecall
 from ragas.metrics import answer_relevancy
 from ragas.llama_index import evaluate
 from ragas.llms import LangchainLLM
@@ -12,11 +10,6 @@ from ragas.llms import LangchainLLM
 from langchain.chat_models import AzureChatOpenAI
 from langchain.embeddings import AzureOpenAIEmbeddings
 
-
-from llama_index.evaluation import (
-    DatasetGenerator,
-    QueryResponseDataset,
-)
 
 from langfuse import Langfuse
 from langfuse.model import (
@@ -26,59 +19,10 @@ from langfuse.model import (
 )
 
 
-from app.llama_index.ingestion import setup_ingestion_pipeline
 from app.llama_index.vector_store import setup_vector_store
 from app.llama_index.llm import setup_service_context
-from app.llama_index.templates import (
-    TEXT_QUESTION_TEMPLATE,
-    EVAL_QUESTION_GEN_TEMPLATE,
-)
-from app.utils.file import save_dataset_to_json
+
 from app.utils.env import get_env_variable
-
-EVAL_DATA_PATH = "app/eval/eval_data/eval_doc.pdf"
-DATASET_JSON_PATH = "app/eval/eval_data/spd_2021_dataset.json"
-EVAL_VECTOR_STORE_NAME = "election_programs_eval"
-SERVICE_CONTEXT_VERSION = "3.5"
-NUM_QUESTIONS_PER_CHUNK = 3
-NUM_EVAL_NODES = 100
-EVAL_METRICS = [
-    Faithfulness(),
-    ContextPrecision(),
-    ContextRecall(),
-    AnswerRelevancy(),
-]
-VERSION = "0.1.1"
-
-
-def generate_dataset():
-    docs = SimpleDirectoryReader(input_files=[EVAL_DATA_PATH]).load_data()
-    vector_store = setup_vector_store(EVAL_VECTOR_STORE_NAME)
-    pipeline = setup_ingestion_pipeline(vector_store=vector_store)
-    eval_nodes = pipeline.run(documents=docs)
-    eval_service_context = setup_service_context(SERVICE_CONTEXT_VERSION)
-
-    dataset_generator = DatasetGenerator(
-        eval_nodes[:NUM_EVAL_NODES],
-        service_context=eval_service_context,
-        show_progress=True,
-        num_questions_per_chunk=NUM_QUESTIONS_PER_CHUNK,
-        text_question_template=PromptTemplate(TEXT_QUESTION_TEMPLATE),
-        question_gen_query=EVAL_QUESTION_GEN_TEMPLATE,
-    )
-    eval_dataset = dataset_generator.generate_dataset_from_nodes(num=NUM_EVAL_NODES)
-    save_dataset_to_json(eval_dataset, DATASET_JSON_PATH)
-
-
-def generate_ragas_qr_pairs(dataset_json_path):
-    try:
-        eval_dataset = QueryResponseDataset.from_json(dataset_json_path)
-    except Exception as e:
-        raise ValueError(f"Failed to load dataset from {dataset_json_path}: {e}")
-
-    eval_questions, eval_answers = zip(*eval_dataset.qr_pairs)
-    eval_answers = [[a] for a in eval_answers]
-    return eval_questions, list(eval_answers)
 
 
 def setup_ragas_llm():
