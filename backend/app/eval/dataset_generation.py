@@ -1,3 +1,4 @@
+import logging
 from llama_index import SimpleDirectoryReader, PromptTemplate
 from llama_index.evaluation import DatasetGenerator, QueryResponseDataset
 from app.eval.constants import (
@@ -21,6 +22,7 @@ def generate_dataset():
     pipeline = setup_ingestion_pipeline(vector_store=vector_store)
     eval_nodes = pipeline.run(documents=docs)
     eval_service_context = setup_service_context(SERVICE_CONTEXT_VERSION)
+    logging.info(f"Generated {len(eval_nodes)} nodes.")
 
     dataset_generator = DatasetGenerator(
         eval_nodes[:NUM_EVAL_NODES],
@@ -32,6 +34,7 @@ def generate_dataset():
     )
     eval_dataset = dataset_generator.generate_dataset_from_nodes(num=NUM_EVAL_NODES)
     save_dataset_to_json(eval_dataset, DATASET_JSON_PATH)
+    logging.info(f"Saved dataset to {DATASET_JSON_PATH}.")
 
 
 def generate_ragas_qr_pairs(dataset_json_path):
@@ -42,4 +45,5 @@ def generate_ragas_qr_pairs(dataset_json_path):
 
     eval_questions, eval_answers = zip(*eval_dataset.qr_pairs)
     eval_answers = [[a] for a in eval_answers]
+    logging.info(f"Generated {len(eval_questions)} question-response pairs.")
     return eval_questions, list(eval_answers)
