@@ -1,14 +1,15 @@
-from llama_index import (
-    VectorStoreIndex,
-    SummaryIndex,
-    ServiceContext,
-)
-from llama_index.node_parser import SentenceSplitter
+import logging
+import nest_asyncio
 from llama_index.tools import QueryEngineTool, ToolMetadata
 from llama_index.agent import OpenAIAgent
+from llama_index.query_engine import SubQuestionQueryEngine
+from llama_index.vector_stores.types import ExactMatchFilter, MetadataFilters
 
-from app.llama_index.llm import llm_35, llm_40, messages
-from app.llama_index.index import load_docs
+from app.llama_index.llm import llm_35, setup_service_context
+from app.llama_index.index import setup_index
+from app.llama_index.query_engine import setup_query_engine
+from app.database.crud import get_vectorized_election_programs_from_db
+from app.database.database import Session
 
 
 programs = {
@@ -19,70 +20,90 @@ programs = {
     "Grüne": "https://www.abgeordnetenwatch.de/sites/default/files/election-program-files/B90DieGr%C3%BCnen_Wahlprogramm_BTW2021.pdf",
 }
 
-program_documents = {}
-documents = []
 
-for party, url in programs.items():
-    document = load_docs(url)
-    program_documents[party] = document
+def setup_agent():
+    session = Session()
+    vectorized_election_programs = get_vectorized_election_programs_from_db(session)
+    logging.info(f"Loaded {len(vectorized_election_programs)} vectorized programs.")
+    # get party name
+    vector_tools = []
+    agents = {}
+    query_engines = {}
+    for program in vectorized_election_programs:
+        meta_data_filters = MetadataFilters(
+            filters=[
+                ExactMatchFilter(key="group_id", value=program.id),
+                ExactMatchFilter(key="election_id", value=program.election_id),
+                ExactMatchFilter(key="party_id", value=program.party_id),
+            ]
+        )
 
+        # define query engines
+        vector_index = setup_index()
+        vector_query_engine = setup_query_engine(
+            vector_index, filters=meta_data_filters
+        )
+        # define tools
+        query_engine_tools = [
+            QueryEngineTool(
+                query_engine=vector_query_engine,
+                metadata=ToolMetadata(
+                    name=f"vector_tool_{program.full_name}",
+                    description=(
+                        f"Nützlich für Fragen zu spezifischen Aspekten des Wahlprogramms der {program.full_name} für die {program.label}."
+                    ),
+                ),
+            )
+        ]
 
-service_context = ServiceContext.from_defaults(llm=llm_35)
+        logging.info(f"Loaded query engine tool for {program.full_name}.")
 
-node_parser = SentenceSplitter()
+        # build agent
+        function_llm = llm_35
+        agent = OpenAIAgent.from_tools(
+            query_engine_tools,
+            llm=function_llm,
+            system_prompt=""" \
+            Sie sind ein Experte für Wahlprogramme und helfen mir bei der Analyse.
+            Bitte verwenden Sie immer die bereitgestellten Tools, um eine Frage zu beantworten. Verlassen Sie sich nicht auf Vorwissen.\
+            """,
+        )
+        agents[program.id] = agent
+        query_engines[program.id] = vector_index.as_query_engine(similarity_top_k=3)
+        for tool in query_engine_tools:
+            vector_tools.append(tool)
 
-agents = {}
-query_engines = {}
-all_nodes = []
-
-for party, text_content in program_documents.items():
-    nodes = node_parser.get_nodes_from_text(text_content)
-    all_nodes.extend(nodes)
-
-    # build vector index
-    vector_index = VectorStoreIndex(
-        nodes,
+    logging.info(f"Loaded {len(vector_tools)} tools.")
+    service_context = setup_service_context(model_version="3.5", azure=True)
+    sub_question_query_engine = SubQuestionQueryEngine.from_defaults(
+        query_engine_tools=vector_tools,
         service_context=service_context,
-        index_name=f"{party}_election_programs",
-        vector_store_name=f"{party}_election_programs",
     )
-
-    # build summary index (you need to implement or adjust this part based on your summary method)
-    summary_index = SummaryIndex(nodes, service_context=service_context)
-
-    # define query engines
-    vector_query_engine = vector_index.as_query_engine()
-    summary_query_engine = summary_index.as_query_engine()
-
-    # define tools
-    query_engine_tools = [
-        QueryEngineTool(
-            query_engine=vector_query_engine,
-            metadata=ToolMetadata(
-                name="vector_tool",
-                description=(
-                    f"Useful for questions related to specific aspects of the {party}'s election program."
-                ),
-            ),
+    query_engine_tool = QueryEngineTool(
+        query_engine=sub_question_query_engine,
+        metadata=ToolMetadata(
+            name="sub_question_query_engine",
+            description="Nützlich für Fragen, die mehrere Wahlprogramme betreffen.",
         ),
-        QueryEngineTool(
-            query_engine=summary_query_engine,
-            metadata=ToolMetadata(
-                name="summary_tool",
-                description=(
-                    f"Useful for requests that require a holistic summary of the {party}'s election program."
-                ),
-            ),
-        ),
-    ]
+    )
+    vector_tools.append(query_engine_tool)
 
-    function_llm = llm_35
+    logging.info(f"Loaded query engine tool.")
     agent = OpenAIAgent.from_tools(
-        query_engine_tools,
-        llm=function_llm,
+        vector_tools,
+        llm=llm_35,
+        system_prompt=""" \
+        Sie sind ein Experte für Wahlprogramme und helfen mir bei der Analyse. Alle Fragen beziehen sich immer auf die Wahlprogramme der Parteien.
+        Verwenden Sie immer die bereitgestellten Tools, um eine Frage zu beantworten. Verlassen Sie sich nicht auf Vorwissen.\
+        """,
         verbose=True,
-        system_prompt=f"You are a specialized agent designed to answer queries about the {party}'s election program.",
     )
+    logging.info("Loaded agent.")
+    return agent
 
-    agents[party] = agent
-    query_engines[party] = vector_query_engine
+
+async def get_response_from_llama_agent(question):
+    nest_asyncio.apply()
+    top_agent = setup_agent()
+    response = await top_agent.stream_chat(question)
+    return response
