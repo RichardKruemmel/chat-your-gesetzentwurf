@@ -8,7 +8,7 @@ from langchain.chains import RetrievalQAWithSourcesChain, LLMChain
 
 load_dotenv()
 openai.api_type = "azure"
-openai.api_base = os.getenv("OPENAI_API_BASE")
+openai.azure_endpoint = os.getenv("OPENAI_API_BASE")
 openai.api_key = os.getenv("OPENAI_API_KEY")
 openai.api_version = os.getenv("OPENAI_API_VERSION")
 deployment_name = os.getenv("OPENAI_DEPLOYMENT_NAME")
