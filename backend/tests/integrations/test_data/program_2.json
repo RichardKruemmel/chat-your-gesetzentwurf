@@ -1,0 +1,21 @@
+{
+  "id": 2,
+  "entity_type": "election_program",
+  "label": "Election Program for Party B",
+  "api_url": "https://www.abgeordnetenwatch.de/api/v2/election_programs/2",
+  "parliament_period": {
+    "id": 1,
+    "label": "2021-2025 Period"
+  },
+  "party": {
+    "id": 2,
+    "label": "Party B"
+  },
+  "link": [
+    {
+      "uri": "https://example.com/election_programs/2",
+      "title": "Election Program for Party B"
+    }
+  ],
+  "file": "https://example.com/downloads/election_program_2.pdf"
+}

@@ -1,0 +1,19 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "entity_type": "election",
+      "label": "Election 1",
+      "api_url": "https://www.abgeordnetenwatch.de/api/v2/elections/1",
+      "parliament": {
+        "id": 1,
+        "label": "Parliament 1"
+      },
+      "previous_period": null,
+      "type": "election",
+      "election_date": "2021-01-01",
+      "start_date_period": "2021-01-01",
+      "end_date_period": "2021-12-31"
+    }
+  ]
+}
