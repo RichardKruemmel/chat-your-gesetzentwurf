@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import pandas as pd
 import logging
 from langfuse import Langfuse
+from langfuse.callback import CallbackHandler
 from langfuse.model import (
     CreateTrace,
     CreateSpan,
@@ -67,3 +68,9 @@ def get_traces(name=None, limit=None, user_id=None):
     print(all_data[:limit])
     logging.info("Langfuse traces successfully retrieved.")
     return all_data[:limit]
+
+
+def get_langfuse_callback_manager():
+    secret_key = get_env_variable("LANGFUSE_SECRET_KEY")
+    public_key = get_env_variable("LANGFUSE_PUBLIC_KEY")
+    return CallbackHandler(public_key, secret_key)
