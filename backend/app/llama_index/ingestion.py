@@ -1,8 +1,5 @@
 from typing import List
-from llama_index import (
-    Document,
-    SimpleDirectoryReader,
-)
+from llama_index import Document
 from llama_index.ingestion import IngestionPipeline, IngestionCache
 from llama_index.ingestion.cache import RedisCache
 from llama_index.text_splitter import SentenceSplitter
@@ -25,7 +22,7 @@ from app.llama_index.templates import (
     QUESTION_GEN_TEMPLATE,
 )
 from app.database.database import Session
-from app.database.models.election_programm import ElectionProgram
+from app.database.models.election_program import ElectionProgram
 from app.scraper.utils.pdf_downloader import download_pdf
 from app.llama_index.loader import load_docs
 
@@ -45,6 +42,9 @@ def setup_ingestion_pipeline(vector_store: QdrantVectorStore):
             model="text-embedding-ada-002",
             embed_batch_size=16,
         ),
+        QuestionsAnsweredExtractor(llm_35, prompt_template=QUESTION_GEN_TEMPLATE),
+        SummaryExtractor(llm_35, prompt_template=SUMMARY_EXTRACT_TEMPLATE),
+        KeywordExtractor(llm_35, num_keywords=3),
     ]
 
     try:
@@ -89,6 +89,11 @@ def query_and_ingest_election_programs(election_id: int, party_id: int):
         )
         vector_store = setup_vector_store("election_programs")
         for program in election_programs:
+            if program.vectorized == True:
+                logging.info(
+                    f"Election program with id={program.id} is already vectorized."
+                )
+                continue
             # Define the path where the PDF will be saved
             save_path = os.path.join(
                 "./../docs", f"{program.election_id}_{program.id}.pdf"
@@ -98,7 +103,6 @@ def query_and_ingest_election_programs(election_id: int, party_id: int):
             # Download the PDF
             download_pdf(program.file_cloud_url, save_path)
             logging.info(f"Downloaded PDF to {save_path}")
-            print(save_path)
 
             documents = load_docs(save_path, program)
 
@@ -109,6 +113,12 @@ def query_and_ingest_election_programs(election_id: int, party_id: int):
             # Delete the PDF
             os.remove(save_path)
             logging.info(f"Deleted PDF from {save_path}")
+            # set vectorized to True
+            program.vectorized = True
+            db.commit()
+            logging.info(
+                f"Successfully set vectorized to True for election_program_id={program.id}"
+            )
 
     except requests.HTTPError as http_err:
         logging.error(f"HTTP error occurred: {http_err}")
