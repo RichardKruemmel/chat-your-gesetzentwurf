@@ -44,7 +44,7 @@ def setup_test_database():
             party_id=1,
             abgeordnetenwatch_file_url="http://localhost:8000/program/1",
             file_cloud_url="",
-            vector_store_id=101,
+            vectorized=False,
         ),
         models.ElectionProgram(
             id=2,
@@ -53,7 +53,7 @@ def setup_test_database():
             party_id=2,
             abgeordnetenwatch_file_url="http://localhost:8000/program/2",
             file_cloud_url="",
-            vector_store_id=102,
+            vectorized=False,
         ),
     ]
     session.add_all(parties)
