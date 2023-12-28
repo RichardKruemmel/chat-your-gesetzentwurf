@@ -25,14 +25,16 @@ from app.database.schema import Token, User
 from app.security import create_access_token
 from app.utils.bearer import OAuth2PasswordBearerWithCookie
 from app.utils.hashing import Hasher
-from app.langchain.llm import chatgpt
+from app.langchain.agent import open_ai_agent
 from app.logging_config import configure_logging
-from app.llama_index.vector_store import main
+from app.eval.main import main as eval_main
 from app.llama_index.ingestion import (
     query_and_ingest_election_programs,
 )
 from app.llama_index.llm import verify_llm_connection
 from app.llama_index.index import setup_index
+from app.llama_index.agent import get_response_from_llama_agent
+from app.eval.langfuse_integration import get_langfuse_callback_manager
 
 
 configure_logging()
@@ -125,7 +127,30 @@ async def read_users_me(current_user: User = Depends(get_current_user_from_token
 
 
 @app.post(
-    "/chat",
+    "/chat_llama",
+    summary="Chat with the AI",
+    description="Get a response from the AI model based on the input text",
+)
+async def read_chat(
+    question: str = Query(
+        ..., description="Input text to get a response from the AI model"
+    ),
+):
+    try:
+        response = await get_response_from_llama_agent(question)
+
+        if response is not None:
+            return response
+        else:
+            raise HTTPException(
+                status_code=500, detail="Failed to get a response from the AI model"
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post(
+    "/chat_agent",
     summary="Chat with the AI",
     description="Get a response from the AI model based on the input text",
 )
@@ -136,16 +161,13 @@ async def read_chat(
     # history: Annotated[str, Path(title="Chat history")] = "",
 ):
     try:
-        # response = get_response(question, history)
-        response = chatgpt(
-            [
-                HumanMessage(
-                    content=question,
-                )
-            ]
+        langfuse_callback = get_langfuse_callback_manager()
+        response = open_ai_agent.invoke(
+            input=question, config={"callbacks": [langfuse_callback]}
         )
+        print(response)
         if response is not None:
-            return response.content
+            return response
         else:
             raise HTTPException(
                 status_code=500, detail="Failed to get a response from the AI model"
@@ -203,7 +225,7 @@ async def check_index_connection():
 @app.get("/ingest-data")
 async def ingest_data():
     try:
-        query_and_ingest_election_programs(128, 1)
+        query_and_ingest_election_programs(128, 2)
         return {
             "status": "success",
             "message": "Ingested data.",
@@ -212,4 +234,19 @@ async def ingest_data():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to ingest data: {e}",
+        )
+
+
+@app.get("/create-eval")
+def create_eval():
+    try:
+        eval_main()
+        return {
+            "status": "success",
+            "message": "Created eval.",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create eval: {e}",
         )
