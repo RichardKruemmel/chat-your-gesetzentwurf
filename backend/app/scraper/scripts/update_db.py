@@ -9,7 +9,7 @@ from app.scraper.utils.compare_and_fetch_update import compare_and_fetch_update
 
 from app.database.crud import insert_and_update
 from app.database.utils.db_utils import get_last_id_from_model
-from app.database.models.election_programm import ElectionProgram
+from app.database.models.election_program import ElectionProgram
 
 
 def update_db(session: Session) -> None:
