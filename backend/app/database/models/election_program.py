@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, ForeignKey, String
+from sqlalchemy import Integer, ForeignKey, String, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -17,7 +17,7 @@ class ElectionProgram(Base):
     )
     abgeordnetenwatch_file_url: Mapped[str] = mapped_column(String, nullable=False)
     file_cloud_url: Mapped[str] = mapped_column(String)
-    vector_store_id: Mapped[int] = mapped_column(Integer)
+    vectorized: Mapped[bool] = mapped_column(Boolean)
 
     election = relationship("Election", back_populates="election_programs")
     party = relationship("Party", back_populates="election_programs")

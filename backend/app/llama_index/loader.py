@@ -1,7 +1,7 @@
 import logging
 from llama_index import SimpleDirectoryReader
 
-from app.database.models.election_programm import ElectionProgram
+from app.database.models.election_program import ElectionProgram
 
 
 def load_docs(save_path: str, program: ElectionProgram):

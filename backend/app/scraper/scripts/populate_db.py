@@ -6,8 +6,8 @@ from app.database.database import Base, Session, engine
 from app.database.models.party import Party
 from app.database.models.parliament import Parliament
 from app.database.models.election import Election
-from app.database.models.election_programm import ElectionProgram
-from backend.app.scraper.utils.api_utils import fetch_entity
+from app.database.models.election_program import ElectionProgram
+from app.scraper.utils.api_utils import fetch_entity
 
 
 def populate_parties() -> None:
