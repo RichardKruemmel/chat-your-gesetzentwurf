@@ -1,3 +1,4 @@
+import logging
 import os
 from dotenv import load_dotenv
 from llama_index import OpenAIEmbedding, ServiceContext
@@ -37,7 +38,6 @@ llm_40 = AzureOpenAI(
 )
 
 ada_2 = AzureOpenAIEmbedding(
-    engine="wahlwave-embedding",
     api_key=api_key,
     azure_endpoint=api_base,
     api_version=api_version,
@@ -72,6 +72,7 @@ def setup_service_context(model_version="3.5", azure=True):
             raise ValueError("Invalid model version specified")
 
         service_context = ServiceContext.from_defaults(llm=llm, embed_model=embed_model)
+        logging.info(f"Loaded service context for {model_version}.")
         return service_context
     except Exception as e:
         raise ValueError(f"Failed to set up service context: {e}")
