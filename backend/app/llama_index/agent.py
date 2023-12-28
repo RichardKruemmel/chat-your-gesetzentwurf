@@ -105,5 +105,5 @@ def setup_agent():
 async def get_response_from_llama_agent(question):
     nest_asyncio.apply()
     top_agent = setup_agent()
-    response = await top_agent.stream_chat(question)
+    response = await top_agent.aquery(question)
     return response
