@@ -21,7 +21,7 @@ from langchain.schema import HumanMessage
 from app.database.crud import get_user
 from app.database.database import Session, engine
 from app.database.utils.db_utils import get_session
-from app.database.schema import Token, User
+from app.database.schema import ChatRequest, Token, User
 from app.security import create_access_token
 from app.utils.bearer import OAuth2PasswordBearerWithCookie
 from app.utils.hashing import Hasher
@@ -131,16 +131,12 @@ async def read_users_me(current_user: User = Depends(get_current_user_from_token
     summary="Chat with the AI",
     description="Get a response from the AI model based on the input text",
 )
-async def read_chat(
-    question: str = Query(
-        ..., description="Input text to get a response from the AI model"
-    ),
-):
+async def read_chat(chat_request: ChatRequest):
     try:
-        response = await get_response_from_llama_agent(question)
-
+        response = await get_response_from_llama_agent(chat_request.question)
+        print(chat_request)
         if response is not None:
-            return response
+            return {"reply": response}
         else:
             raise HTTPException(
                 status_code=500, detail="Failed to get a response from the AI model"
