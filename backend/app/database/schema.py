@@ -62,11 +62,5 @@ class Token(BaseModel):
     token_type: str
 
 
-class Message(BaseModel):
-    role: str
-    content: str
-
-
 class ChatRequest(BaseModel):
-    messages: list[Message]
-    files: list[str] = []
+    question: str

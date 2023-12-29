@@ -58,6 +58,7 @@ export default function Chat(props: { apiKeyApp: string }) {
     { color: 'gray.500' },
     { color: 'whiteAlpha.600' },
   );
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const handleTranslate = async () => {
     const apiKey = apiKeyApp;
     setInputOnSubmit(inputCode);
@@ -91,17 +92,15 @@ export default function Chat(props: { apiKeyApp: string }) {
     };
 
     // -------------- Fetch --------------
-    const response = await fetch(
-      'http://127.0.0.1:8000/chat?question=' + encodeURIComponent(inputCode),
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-        body: JSON.stringify(body),
+    const url = `${BACKEND_URL}?name=` + encodeURIComponent(inputCode);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
       },
-    );
+      signal: controller.signal,
+      //body: JSON.stringify(body),
+    });
 
     if (!response.ok) {
       setLoading(false);

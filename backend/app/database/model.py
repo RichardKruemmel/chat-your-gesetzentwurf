@@ -4,7 +4,7 @@ from .database import Base
 
 
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = "user"
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
@@ -12,22 +12,11 @@ class User(Base):
     hashed_password = Column(String)
 
 
-class Document(Base):
-    __tablename__ = "documents"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    date = Column(Date)
-    pdf_data = Column(LargeBinary)
-
-    embeddings = relationship("Embedding", back_populates="document")
-
-
 class Embedding(Base):
-    __tablename__ = "embeddings"
+    __tablename__ = "embedding"
 
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(Integer, ForeignKey("documents.id"), index=True)
     text_embedding = Column(Text)
 
-    document = relationship("Document", back_populates="embeddings")
+    document = relationship("Document", back_populates="embedding")

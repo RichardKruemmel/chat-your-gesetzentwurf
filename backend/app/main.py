@@ -1,8 +1,8 @@
 import os
-import secrets
 from datetime import timedelta
 import os
-from typing import List, Optional, Annotated
+from typing import Optional
+
 
 from fastapi import (
     FastAPI,
@@ -10,26 +10,34 @@ from fastapi import (
     HTTPException,
     status,
     Response,
-    BackgroundTasks,
     Query,
-    Path,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt, JWTError
-import langchain
-from langchain.schema import HumanMessage
-from pydantic import BaseModel
 
 # from app.core.chat import get_response
-from app.database.database import Session
-from app.database.crud import get_user
+from app.database.crud import get_user, get_vectorized_election_programs_from_db
+from app.database.database import Session, engine
+from app.database.utils.db_utils import get_session
 from app.database.schema import ChatRequest, Token, User
 from app.security import create_access_token
 from app.utils.bearer import OAuth2PasswordBearerWithCookie
 from app.utils.hashing import Hasher
-from app.utils.get_response import get_response
+from app.langchain.agent import setup_langchain_agent
 from app.langchain.llm import chatgpt
+from app.logging_config import configure_logging
+from app.eval.main import main as eval_main
+from app.llama_index.ingestion import (
+    query_and_ingest_election_programs,
+)
+from app.llama_index.llm import verify_llm_connection
+from app.llama_index.index import setup_index
+from app.llama_index.agent import setup_llama_agent
+from app.eval.langfuse_integration import get_langfuse_callback_manager
+
+
+configure_logging()
 
 
 def get_application():
@@ -49,19 +57,15 @@ def get_application():
 app = get_application()
 
 
-def get_db():
-    db = Session()
-    try:
-        yield db
-    finally:
-        db.close()
+@app.on_event("startup")
+async def startup_event():
+    global global_llama_agent
+    global global_llangchain_agent
+    global_llama_agent = setup_llama_agent()
+    global_llangchain_agent = setup_langchain_agent()
 
 
-if os.environ.get("ENV") == "local":
-    langchain.debug = True
-
-
-def authenticate_user(username: str, password: str, db: Session):
+def authenticate_user(username: str, password: str, db: Session = Depends(get_session)):
     user = get_user(username=username, db=db)
     if not user:
         return False
@@ -74,7 +78,7 @@ def authenticate_user(username: str, password: str, db: Session):
 def login_for_access_token(
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_session),
 ):
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
@@ -98,7 +102,7 @@ oauth2_scheme = OAuth2PasswordBearerWithCookie(tokenUrl="/login/token")
 
 
 def get_current_user_from_token(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_session)
 ):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -131,27 +135,21 @@ async def read_users_me(current_user: User = Depends(get_current_user_from_token
 
 
 @app.post(
-    "/chat",
-    summary="Chat with the AI",
-    description="Get a response from the AI model based on the input text",
+    "/chat_openai",
+    summary="Chat with the OpenAI Agent",
+    description="Get a response from the OpenAI Agent based on the input text",
 )
-async def read_chat(
-    question: str = Query(
-        ..., description="Input text to get a response from the AI model"
-    ),
-    # history: Annotated[str, Path(title="Chat history")] = "",
+async def read_openai_chat(
+    chat_request: ChatRequest,
 ):
     try:
-        # response = get_response(question, history)
-        response = chatgpt(
-            [
-                HumanMessage(
-                    content=question,
-                )
-            ]
+        langfuse_callback = get_langfuse_callback_manager()
+        response = chatgpt.invoke(
+            input=chat_request.question, config={"callbacks": [langfuse_callback]}
         )
+        print(response)
         if response is not None:
-            return response.content
+            return {"reply": {"response": response.content}}
         else:
             raise HTTPException(
                 status_code=500, detail="Failed to get a response from the AI model"
@@ -160,7 +158,147 @@ async def read_chat(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/upload-data")
-async def trigger_data_upload(background_tasks: BackgroundTasks):
-    background_tasks.add_task()
-    return {"message": "Data upload triggered"}
+@app.post(
+    "/chat_llama",
+    summary="Chat with the Llama Index Agent",
+    description="Get a response from the Llama Index agent based on the input text",
+)
+async def read_llama_chat(chat_request: ChatRequest):
+    try:
+        response = await global_llama_agent.aquery(chat_request.question)
+        if response is not None:
+            return {"reply": response}
+        else:
+            raise HTTPException(
+                status_code=500, detail="Failed to get a response from the AI model"
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post(
+    "/chat_langchain",
+    summary="Chat with the Langchain Agent",
+    description="Get a response from the Langchain Agent based on the input text",
+)
+async def read_langchain_chat(
+    chat_request: ChatRequest,
+):
+    try:
+        print("question is ", chat_request.question)
+        langfuse_callback = get_langfuse_callback_manager()
+        response = global_llangchain_agent.invoke(
+            input=chat_request.question, config={"callbacks": [langfuse_callback]}
+        )
+        if response is not None:
+            return {"reply": {"response": response["output"]}}
+        else:
+            raise HTTPException(
+                status_code=500, detail="Failed to get a response from the AI model"
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/check-db-connection")
+async def check_db_connection():
+    try:
+        with engine.connect():
+            pass  # Connection was successful
+        return {
+            "status": "success",
+            "message": "Connected to the database successfully.",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to connect to the database: {e}",
+        )
+
+
+@app.get("/check-llm-connection")
+async def check_llm_connection():
+    try:
+        verify_llm_connection()
+        return {
+            "status": "success",
+            "message": "Connected to the LLM successfully.",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to connect to the LLM: {e}",
+        )
+
+
+@app.get("/check-index-connection")
+async def check_index_connection():
+    try:
+        setup_index()
+        return {
+            "status": "success",
+            "message": "Setup index successfully.",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to connect to the LLM: {e}",
+        )
+
+
+@app.get("/ingest-data")
+async def ingest_data(party_id: int):
+    try:
+        # Bundestagswahl 2021 only
+
+        election_id = 128
+        query_and_ingest_election_programs(election_id=election_id, party_id=party_id)
+        return {
+            "status": "success",
+            "message": "Ingested data.",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to ingest data: {e}",
+        )
+
+
+@app.get("/create-eval")
+def create_eval():
+    try:
+        eval_main()
+        return {
+            "status": "success",
+            "message": "Created eval.",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create eval: {e}",
+        )
+
+
+@app.get("/vectorized-programs")
+def get_vectorized_programs(db: Session = Depends(get_session)):
+    try:
+        programs = []
+        vectorized_programs = get_vectorized_election_programs_from_db(db)
+        if vectorized_programs is not None:
+            for program in vectorized_programs:
+                programs.append(
+                    {
+                        "id": program.id,
+                        "party_id": program.party_id,
+                        "election_id": program.election_id,
+                        "full_name": program.full_name,
+                        "label": program.label,
+                    }
+                )
+        print(vectorized_programs)
+        return programs
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve vectorized programs: {e}",
+        )
