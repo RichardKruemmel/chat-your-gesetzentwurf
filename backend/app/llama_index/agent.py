@@ -21,7 +21,7 @@ programs = {
 }
 
 
-def setup_agent():
+def setup_llama_agent():
     session = Session()
     vectorized_election_programs = get_vectorized_election_programs_from_db(session)
     logging.info(f"Loaded {len(vectorized_election_programs)} vectorized programs.")
@@ -100,10 +100,3 @@ def setup_agent():
     )
     logging.info("Loaded agent.")
     return agent
-
-
-async def get_response_from_llama_agent(question):
-    nest_asyncio.apply()
-    top_agent = setup_agent()
-    response = await top_agent.aquery(question)
-    return response
