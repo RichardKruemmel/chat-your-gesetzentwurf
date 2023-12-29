@@ -18,7 +18,7 @@ def insert_and_update(
     model: Type[Base], data: List[Dict], session: Optional[Session]
 ) -> None:
     if not session:
-        session = DatabaseSession()
+        session = Session()
     try:
         if session.bind.dialect.name == "postgresql":
             # PostgreSQL-specific INSERT ... ON CONFLICT
