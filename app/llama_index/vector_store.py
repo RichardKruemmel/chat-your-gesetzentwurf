@@ -1,7 +1,4 @@
-import os
-from typing import List
 import logging
-from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from llama_index import VectorStoreIndex
@@ -10,14 +7,14 @@ from llama_index.vector_stores import QdrantVectorStore
 from llama_index.query_engine.retriever_query_engine import RetrieverQueryEngine
 from llama_index.indices.vector_store.retrievers import VectorIndexRetriever
 from llama_index.response_synthesizers import get_response_synthesizer
-from app.llama_index.llm import ada_2, llm_35, setup_service_context
+from app.llama_index.llm import setup_service_context
+from app.utils.env import get_env_variable
 
 
 def get_vector_store_credentials() -> str:
     try:
-        load_dotenv()
-        qdrant_api_key = os.environ["QDRANT_API_KEY"]
-        qdrant_url = os.environ["QDRANT_API_URL"]
+        qdrant_api_key = get_env_variable("QDRANT_API_KEY")
+        qdrant_url = get_env_variable("QDRANT_API_URL")
         return qdrant_api_key, qdrant_url
     except Exception as e:
         logging.error(f"An error occurred while reading the credentials: {e}")
