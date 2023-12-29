@@ -25,6 +25,7 @@ from app.security import create_access_token
 from app.utils.bearer import OAuth2PasswordBearerWithCookie
 from app.utils.hashing import Hasher
 from app.langchain.agent import setup_langchain_agent
+from app.langchain.llm import chatgpt
 from app.logging_config import configure_logging
 from app.eval.main import main as eval_main
 from app.llama_index.ingestion import (
@@ -134,14 +135,37 @@ async def read_users_me(current_user: User = Depends(get_current_user_from_token
 
 
 @app.post(
-    "/chat_llama",
-    summary="Chat with the AI",
-    description="Get a response from the AI model based on the input text",
+    "/chat_openai",
+    summary="Chat with the OpenAI Agent",
+    description="Get a response from the OpenAI Agent based on the input text",
 )
-async def read_chat(chat_request: ChatRequest):
+async def read_openai_chat(
+    chat_request: ChatRequest,
+):
+    try:
+        langfuse_callback = get_langfuse_callback_manager()
+        response = chatgpt.invoke(
+            input=chat_request.question, config={"callbacks": [langfuse_callback]}
+        )
+        print(response)
+        if response is not None:
+            return {"reply": {"response": response.content}}
+        else:
+            raise HTTPException(
+                status_code=500, detail="Failed to get a response from the AI model"
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post(
+    "/chat_llama",
+    summary="Chat with the Llama Index Agent",
+    description="Get a response from the Llama Index agent based on the input text",
+)
+async def read_llama_chat(chat_request: ChatRequest):
     try:
         response = await global_llama_agent.aquery(chat_request.question)
-        print(response)
         if response is not None:
             return {"reply": response}
         else:
@@ -153,23 +177,21 @@ async def read_chat(chat_request: ChatRequest):
 
 
 @app.post(
-    "/chat_agent",
-    summary="Chat with the AI",
-    description="Get a response from the AI model based on the input text",
+    "/chat_langchain",
+    summary="Chat with the Langchain Agent",
+    description="Get a response from the Langchain Agent based on the input text",
 )
-async def read_chat(
-    question: str = Query(
-        ..., description="Input text to get a response from the AI model"
-    ),
+async def read_langchain_chat(
+    chat_request: ChatRequest,
 ):
     try:
+        print("question is ", chat_request.question)
         langfuse_callback = get_langfuse_callback_manager()
         response = global_llangchain_agent.invoke(
-            input=question, config={"callbacks": [langfuse_callback]}
+            input=chat_request.question, config={"callbacks": [langfuse_callback]}
         )
-        print(response)
         if response is not None:
-            return response
+            return {"reply": {"response": response["output"]}}
         else:
             raise HTTPException(
                 status_code=500, detail="Failed to get a response from the AI model"
