@@ -3,4 +3,4 @@
 *.pyc
 *.pdf
 !eval_doc.pdf
-/backend/.streamlit/secrets.toml
+.streamlit/secrets.toml
