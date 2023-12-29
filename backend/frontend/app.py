@@ -4,11 +4,36 @@ import requests
 st.set_page_config(
     page_title="Chat Your Election Program", page_icon="💬", layout="centered"
 )
+
+
+@st.cache_data(ttl=3600)
+def get_available_programs():
+    try:
+        response = requests.get("http://127.0.0.1:8000/vectorized-programs")
+        if response.status_code == 200:
+            vectorized_programs = response.json()
+            return vectorized_programs
+        else:
+            return None
+    except requests.exceptions.RequestException as e:
+        return None
+
+
+with st.sidebar:
+    st.title("Available Election Programs")
+    vectorized_programs = get_available_programs()
+    if vectorized_programs is not None:
+        for program in vectorized_programs:
+            st.write(f"{program['full_name']} ({program['label']})")
+    else:
+        st.write("No election programs available.")
+    "[View the source code](https://github.com/RichardKruemmel/chat-your-gesetzentwurf)"
+
 st.title("Chat Your Election Program")
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "assistant", "content": "Hello! I am your election program expert"}
+        {"role": "assistant", "content": "Hello! I am your election program expert."}
     ]
 
 if "input" not in st.session_state:
@@ -34,18 +59,18 @@ def send_message(message):
 for message in st.session_state.messages:
     if message["role"] == "user":
         st.text_area(
-            "",
+            label="User input",
             value=message["content"],
             key=message["content"],
-            height=100,
+            height=50,
             disabled=True,
         )
     else:
         st.text_area(
-            "",
+            label="AI response",
             value=message["content"],
             key=message["content"],
-            height=20,
+            height=100,
             disabled=True,
         )
 
