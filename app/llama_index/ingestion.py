@@ -1,3 +1,4 @@
+import os
 from typing import List
 from llama_index import Document
 from llama_index.ingestion import IngestionPipeline, IngestionCache
@@ -11,12 +12,10 @@ from llama_index.extractors import (
 from llama_index.vector_stores import QdrantVectorStore
 from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
 import logging
-import os
-from dotenv import load_dotenv
 import requests
+from app.llama_index.llm import setup_llm_35
 
 from app.llama_index.vector_store import setup_vector_store
-from app.llama_index.llm import llm_35
 from app.llama_index.templates import (
     SUMMARY_EXTRACT_TEMPLATE,
     QUESTION_GEN_TEMPLATE,
@@ -25,19 +24,20 @@ from app.database.database import Session
 from app.database.models.election_program import ElectionProgram
 from app.scraper.utils.pdf_downloader import download_pdf
 from app.llama_index.loader import load_docs
+from app.utils.env import get_env_variable
 
 
 def setup_ingestion_pipeline(vector_store: QdrantVectorStore):
-    load_dotenv()
-    api_base = os.getenv("OPENAI_API_BASE")
-    api_key = os.getenv("OPENAI_API_KEY")
-    api_version = os.getenv("OPENAI_API_VERSION")
+    azure_endpoint = get_env_variable("AZURE_OPENAI_ENDPOINT")
+    api_key = get_env_variable("AZURE_OPENAI_API_KEY")
+    api_version = get_env_variable("OPENAI_API_VERSION")
+    llm_35 = setup_llm_35()
     transformations = [
         SentenceSplitter(chunk_size=512),
         AzureOpenAIEmbedding(
             azure_deployment="wahlwave-embedding",
             api_key=api_key,
-            azure_endpoint=api_base,
+            azure_endpoint=azure_endpoint,
             api_version=api_version,
             model="text-embedding-ada-002",
             embed_batch_size=16,
