@@ -50,7 +50,11 @@ def on_send():
 
 
 def send_message(message):
-    api_url = "http://127.0.0.1:8000/chat_llama"
+    if st.secrets["development_env"] == "production":
+        backend_url = st.secrets["backend_url"]
+        api_url = backend_url + "/chat_llama"
+    else:
+        api_url = "http://127.0.0.1:8000/chat_llama"
     response = requests.post(api_url, json={"question": message})
     response_json = response.json()
     return response_json["reply"]["response"]
