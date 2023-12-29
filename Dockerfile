@@ -1,5 +1,5 @@
 # Use specialized FastAPI+Uvicorn+Gunicorn image
-FROM tiangolo/uvicorn-gunicorn-fastapi:python3.9
+FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11
 
 # Set PYTHONPATH environment variable
 ENV PYTHONPATH "${PYTHONPATH}:/"
