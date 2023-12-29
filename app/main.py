@@ -25,7 +25,7 @@ from app.security import create_access_token
 from app.utils.bearer import OAuth2PasswordBearerWithCookie
 from app.utils.hashing import Hasher
 from app.langchain.agent import setup_langchain_agent
-from app.langchain.llm import chatgpt
+from app.langchain.llm import setup_chatgpt
 from app.logging_config import configure_logging
 from app.eval.main import main as eval_main
 from app.llama_index.ingestion import (
@@ -61,8 +61,10 @@ app = get_application()
 async def startup_event():
     global global_llama_agent
     global global_llangchain_agent
+    global global_chatgpt
     global_llama_agent = setup_llama_agent()
     global_llangchain_agent = setup_langchain_agent()
+    global_chatgpt = setup_chatgpt()
 
 
 def authenticate_user(username: str, password: str, db: Session = Depends(get_session)):
@@ -144,7 +146,7 @@ async def read_openai_chat(
 ):
     try:
         langfuse_callback = get_langfuse_callback_manager()
-        response = chatgpt.invoke(
+        response = global_chatgpt.invoke(
             input=chat_request.question, config={"callbacks": [langfuse_callback]}
         )
         print(response)

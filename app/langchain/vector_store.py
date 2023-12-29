@@ -1,6 +1,4 @@
 import os
-import openai
-from dotenv import load_dotenv
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores.pgvector import PGVector
@@ -8,12 +6,6 @@ from langchain.vectorstores.pgvector import PGVector
 from utils.custom_pdf_loader import CustomPDFLoader
 from app.database.config import settings
 
-
-load_dotenv()
-openai.api_type = "azure"
-openai.azure_endpoint = os.getenv("OPENAI_API_BASE")
-openai.api_key = os.getenv("OPENAI_API_KEY")
-openai.api_version = os.getenv("OPENAI_API_VERSION")
 
 loader = CustomPDFLoader("../../../docs/gesetzentwurf.pdf")
 documents = loader.load()

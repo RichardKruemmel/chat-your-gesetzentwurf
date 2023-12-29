@@ -5,7 +5,7 @@ from llama_index.agent import OpenAIAgent
 from llama_index.query_engine import SubQuestionQueryEngine
 from llama_index.vector_stores.types import ExactMatchFilter, MetadataFilters
 
-from app.llama_index.llm import llm_35, setup_service_context
+from app.llama_index.llm import setup_llm_35, setup_service_context
 from app.llama_index.index import setup_index
 from app.llama_index.query_engine import setup_query_engine
 from app.database.crud import get_vectorized_election_programs_from_db
@@ -59,7 +59,7 @@ def setup_llama_agent():
         logging.info(f"Loaded query engine tool for {program.full_name}.")
 
         # build agent
-        function_llm = llm_35
+        function_llm = setup_llm_35()
         agent = OpenAIAgent.from_tools(
             query_engine_tools,
             llm=function_llm,
@@ -91,7 +91,7 @@ def setup_llama_agent():
     logging.info(f"Loaded query engine tool.")
     agent = OpenAIAgent.from_tools(
         vector_tools,
-        llm=llm_35,
+        llm=function_llm,
         system_prompt=""" \
         Sie sind ein Experte für Wahlprogramme und helfen mir bei der Analyse. Alle Fragen beziehen sich immer auf die Wahlprogramme der Parteien.
         Verwenden Sie immer die bereitgestellten Tools, um eine Frage zu beantworten. Verlassen Sie sich nicht auf Vorwissen.\
