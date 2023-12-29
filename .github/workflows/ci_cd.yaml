@@ -1,0 +1,53 @@
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+
+      - name: Install Poetry
+        run: curl -sSL https://install.python-poetry.org | python -
+      - run: poetry install
+
+      - name: Lint
+        run: poetry run python -m black --check .
+
+      - name: Test
+        env:
+          S3_TEST_BUCKET: ${{ secrets.S3_TEST_BUCKET }}
+          S3_TEST_ACCESS_KEY: ${{ secrets.S3_TEST_ACCESS_KEY }}
+          S3_TEST_SECRET_KEY: ${{ secrets.S3_TEST_SECRET_KEY }}
+        run: poetry run python -m pytest
+
+  cd:
+    runs-on: ubuntu-latest
+    needs: [ci]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main'}}
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+
+      - name: Generate deployment package
+        run: zip -r deploy.zip . -x '*.git*'
+
+      - name: Deploy to EB
+        uses: einaregilsson/beanstalk-deploy@v18
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          application_name: ${{ github.ref == 'refs/heads/main' && 'wahlwave-backend'}}
+          environment_name: ${{ github.ref == 'refs/heads/main' && 'Wahlwave-backend-env'}}
+          version_label: ${{ github.sha }}
+          use_existing_version_if_available: true
+          region: eu-central-1
+          deployment_package: deploy.zip
