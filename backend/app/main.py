@@ -15,17 +15,16 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt, JWTError
-from langchain.schema import HumanMessage
 
 # from app.core.chat import get_response
-from app.database.crud import get_user
+from app.database.crud import get_user, get_vectorized_election_programs_from_db
 from app.database.database import Session, engine
 from app.database.utils.db_utils import get_session
 from app.database.schema import ChatRequest, Token, User
 from app.security import create_access_token
 from app.utils.bearer import OAuth2PasswordBearerWithCookie
 from app.utils.hashing import Hasher
-from app.langchain.agent import open_ai_agent
+from app.langchain.agent import setup_langchain_agent
 from app.logging_config import configure_logging
 from app.eval.main import main as eval_main
 from app.llama_index.ingestion import (
@@ -33,7 +32,7 @@ from app.llama_index.ingestion import (
 )
 from app.llama_index.llm import verify_llm_connection
 from app.llama_index.index import setup_index
-from app.llama_index.agent import get_response_from_llama_agent
+from app.llama_index.agent import setup_llama_agent
 from app.eval.langfuse_integration import get_langfuse_callback_manager
 
 
@@ -55,6 +54,14 @@ def get_application():
 
 
 app = get_application()
+
+
+@app.on_event("startup")
+async def startup_event():
+    global global_llama_agent
+    global global_llangchain_agent
+    global_llama_agent = setup_llama_agent()
+    global_llangchain_agent = setup_langchain_agent()
 
 
 def authenticate_user(username: str, password: str, db: Session = Depends(get_session)):
@@ -133,8 +140,8 @@ async def read_users_me(current_user: User = Depends(get_current_user_from_token
 )
 async def read_chat(chat_request: ChatRequest):
     try:
-        response = await get_response_from_llama_agent(chat_request.question)
-        print(chat_request)
+        response = await global_llama_agent.aquery(chat_request.question)
+        print(response)
         if response is not None:
             return {"reply": response}
         else:
@@ -154,11 +161,10 @@ async def read_chat(
     question: str = Query(
         ..., description="Input text to get a response from the AI model"
     ),
-    # history: Annotated[str, Path(title="Chat history")] = "",
 ):
     try:
         langfuse_callback = get_langfuse_callback_manager()
-        response = open_ai_agent.invoke(
+        response = global_llangchain_agent.invoke(
             input=question, config={"callbacks": [langfuse_callback]}
         )
         print(response)
@@ -219,9 +225,12 @@ async def check_index_connection():
 
 
 @app.get("/ingest-data")
-async def ingest_data():
+async def ingest_data(party_id: int):
     try:
-        query_and_ingest_election_programs(128, 2)
+        # Bundestagswahl 2021 only
+
+        election_id = 128
+        query_and_ingest_election_programs(election_id=election_id, party_id=party_id)
         return {
             "status": "success",
             "message": "Ingested data.",
@@ -245,4 +254,29 @@ def create_eval():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create eval: {e}",
+        )
+
+
+@app.get("/vectorized-programs")
+def get_vectorized_programs(db: Session = Depends(get_session)):
+    try:
+        programs = []
+        vectorized_programs = get_vectorized_election_programs_from_db(db)
+        if vectorized_programs is not None:
+            for program in vectorized_programs:
+                programs.append(
+                    {
+                        "id": program.id,
+                        "party_id": program.party_id,
+                        "election_id": program.election_id,
+                        "full_name": program.full_name,
+                        "label": program.label,
+                    }
+                )
+        print(vectorized_programs)
+        return programs
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve vectorized programs: {e}",
         )
