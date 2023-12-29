@@ -1,6 +1,5 @@
 import logging
-from llama_index.tools import ToolMetadata
-from llama_index.langchain_helpers.agents import LlamaIndexTool
+from llama_index.langchain_helpers.agents.tools import LlamaIndexTool
 from llama_index.vector_stores.types import ExactMatchFilter, MetadataFilters
 
 from app.llama_index.index import setup_index
