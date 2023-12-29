@@ -48,6 +48,5 @@ jobs:
           application_name: ${{ github.ref == 'refs/heads/main' && 'wahlwave-backend'}}
           environment_name: ${{ github.ref == 'refs/heads/main' && 'Wahlwave-backend-env'}}
           version_label: ${{ github.sha }}
-          use_existing_version_if_available: true
           region: eu-central-1
           deployment_package: deploy.zip
